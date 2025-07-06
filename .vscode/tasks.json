@@ -106,163 +106,16 @@
             "dependsOn": ["CMake: Configure ExactSolver -- Debug"]
         },
         {
-            "label": "CMake: Configure Pair-and-Assign",
+            "label": "CMake: Configure Heuristic",
             "type": "shell",
             "command": "cmake",
             "args": [
-                "-S", "${workspaceFolder}/Pair-and-Assign/src",
-                "-B", "${workspaceFolder}/Pair-and-Assign/build",
+                "-S", "${workspaceFolder}/heuristic/src",
+                "-B", "${workspaceFolder}/heuristic/build",
                 "-G", "Unix Makefiles",
-<<<<<<< HEAD
-                "-DCMAKE_BUILD_TYPE=Release"
-=======
-                "-DCMAKE_BUILD_TYPE=Debug"
->>>>>>> 777679906ef6f5b57ab61601a94f808f6f711dd5
+                "-DCMAKE_BUILD_TYPE=Release",
             ],
-            "hide": true,
-            "problemMatcher": "$gcc",
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            },
-            "detail": "为Pair-and-Assign项目生成构建系统"
-        },
-        {
-            "label": "CMake: Build Pair-and-Assign",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build", "${workspaceFolder}/Pair-and-Assign/build",
-                "--parallel"
-            ],
-            "hide": true,
-            "problemMatcher": "$gcc",
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            },
-<<<<<<< HEAD
-            "detail": "编译Pair-and-Assign项目",
-=======
-            "detail": "编译项目",
->>>>>>> 777679906ef6f5b57ab61601a94f808f6f711dd5
-            "dependsOn": ["CMake: Configure Pair-and-Assign"]
-        },
-        {
-            "label": "Run Pair-and-Assign",
-            "type": "shell",
-            "command": "${workspaceFolder}/Pair-and-Assign/build/pair_and_assign",
-            "group": {
-                "kind": "test",
-                "isDefault": false
-            },
-<<<<<<< HEAD
-            "hide": true,
-            "dependsOn": ["CMake: Build Pair-and-Assign"],
-            "detail": "运行Pair-and-Assign可执行文件"
-=======
-            "dependsOn": ["CMake: Build Pair-and-Assign"],
-            "detail": "运行编译后的可执行文件"
->>>>>>> 777679906ef6f5b57ab61601a94f808f6f711dd5
-        },
-        {
-            "label": "Build & Run Pair-and-Assign",
-            "type": "shell",
-            "command": "echo 'Running Build & Run Pair-and-Assign'",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "CMake: Configure Pair-and-Assign",
-                "CMake: Build Pair-and-Assign",
-                "Run Pair-and-Assign"
-            ],
-            "group": "test",
-            "detail": "完整的构建并运行Pair-and-Assign流程"
-        },
-        {
-            "label": "CMake: Configure Pair-and-Assign -- Debug",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "-S", "${workspaceFolder}/Pair-and-Assign/src",
-                "-B", "${workspaceFolder}/Pair-and-Assign/build",
-                "-G", "Unix Makefiles",
-                "-DCMAKE_BUILD_TYPE=Debug"
-            ],
-            "hide": true,
-            "problemMatcher": "$gcc",
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            },
-            "detail": "为Pair-and-Assign项目生成Debug构建系统"
-        },
-        {
-            "label": "CMake: Build Pair-and-Assign -- Debug",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build", "${workspaceFolder}/Pair-and-Assign/build",
-                "--parallel"
-            ],
-            "hide": true,
-            "problemMatcher": "$gcc",
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            },
-<<<<<<< HEAD
-            "detail": "编译Pair-and-Assign项目(Debug)",
-            "dependsOn": ["CMake: Configure Pair-and-Assign -- Debug"]
-=======
-            "detail": "编译项目",
-            "dependsOn": ["CMake: Configure GA"]
-        },
-        {
-            "label": "Run GA",
-            "type": "shell",
-            "command": "mpirun --oversubscribe -n 15 ${workspaceFolder}/GA/build/GA",
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
-            "dependsOn": ["CMake: Build GA"],
-            "detail": "运行编译后的可执行文件"
-        },
-        {
-            "label": "Build & Run GA",
-            "type": "shell",
-            "command": "echo 'Running Build & Run'",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "CMake: Configure GA",
-                "CMake: Build GA",
-                "Run GA"
-            ],
-            "group": "test",
-            "detail": "完整的构建并运行流程"
-        },
-        {
-            "label": "Clean Build GA",
-            "type": "shell",
-            "command": "rm",
-            "args": [
-                "-rf", "${workspaceFolder}/GA/build/*"
-            ],
-            "detail": "清理构建目录"
-        },
-        {
-            "label": "CMake: Configure heuristic",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "-S",
-                "${workspaceFolder}/heuristic/src",
-                "-B",
-                "${workspaceFolder}/heuristic/build",
-                "-G",
-                "Unix Makefiles",
-                "-DCMAKE_BUILD_TYPE=Debug"
-            ],
+            "hide": true,     
             "problemMatcher": "$gcc",
             "group": {
                 "kind": "build",
@@ -271,60 +124,90 @@
             "detail": "为项目生成构建系统"
         },
         {
-            "label": "CMake: Build heuristic",
+            "label": "CMake: Build Heuristic",
             "type": "shell",
             "command": "cmake",
             "args": [
-                "--build",
-                "${workspaceFolder}/heuristic/build",
+                "--build", "${workspaceFolder}/heuristic/build",
                 "--parallel"
             ],
+            "hide": true,     
             "problemMatcher": "$gcc",
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
             "detail": "编译项目",
-            "dependsOn": [
-                "CMake: Configure heuristic"
-            ]
+            "dependsOn": ["CMake: Configure Heuristic"]
         },
         {
-            "label": "Run heuristic",
+            "label": "Run ExactSolver",
             "type": "shell",
-            "command": "${workspaceFolder}/heuristic/build/heuristic",
+            "command": "${workspaceFolder}/heuristic/build/Heuristic",
             "group": {
                 "kind": "test",
                 "isDefault": true
             },
-            "dependsOn": [
-                "CMake: Build heuristic"
-            ],
+            "hide": true,     
+            "dependsOn": ["CMake: Build Heuristic"],
             "detail": "运行编译后的可执行文件"
         },
-        {
-            "label": "Build & Run heuristic",
+        {   
+            "label": "Build & Run Heuristic",
             "type": "shell",
             "command": "echo 'Running Build & Run'",
             "dependsOrder": "sequence",
             "dependsOn": [
-                "CMake: Configure heuristic",
-                "CMake: Build heuristic",
-                "Run heuristic"
+                "CMake: Configure Heuristic",
+                "CMake: Build Heuristic",
+                "Run Heuristic"
             ],
             "group": "test",
             "detail": "完整的构建并运行流程"
         },
         {
-            "label": "Clean Build heuristic",
+            "label": "Clean Build Heuristic",
             "type": "shell",
             "command": "rm",
             "args": [
-                "-rf",
-                "${workspaceFolder}/heuristic/build/*"
+                "-rf", "${workspaceFolder}/heuristic/build/*"
             ],
             "detail": "清理构建目录"
->>>>>>> 777679906ef6f5b57ab61601a94f808f6f711dd5
+        },
+        {
+            "label": "CMake: Configure Heuristic -- Debug",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S", "${workspaceFolder}/heuristic/src",
+                "-B", "${workspaceFolder}/heuristic/build",
+                "-G", "Unix Makefiles",
+                "-DCMAKE_BUILD_TYPE=Debug",
+            ],
+            "hide": true,     
+            "problemMatcher": "$gcc",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "为项目生成构建系统"
+        },
+        {
+            "label": "CMake: Build Heuristic -- Debug",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build", "${workspaceFolder}/heuristic/build",
+                "--parallel"
+            ],
+            "hide": true,     
+            "problemMatcher": "$gcc",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "编译项目",
+            "dependsOn": ["CMake: Configure Heuristic -- Debug"]
         }
     ]
 }
