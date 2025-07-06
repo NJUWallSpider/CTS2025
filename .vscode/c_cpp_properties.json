@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/lib/x86_64-linux-gnu/openmpi/include",
+                "/opt/gurobi1202/linux64/include"
+            ],
+            "defines": [
+<<<<<<< HEAD
+                "_MPICC_H"
+=======
+                "_MPICC_H" 
+>>>>>>> 777679906ef6f5b57ab61601a94f808f6f711dd5
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c23",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

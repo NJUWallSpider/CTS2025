@@ -1,0 +1,75 @@
+{
+    "configurations": [
+    {
+        "name": "(gdb) 启动",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/exact_solver/build/ExactSolver",
+        "preLaunchTask": "CMake: Build ExactSolver -- Debug",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "setupCommands": [
+            {
+                "description": "为 gdb 启用整齐打印",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description": "将反汇编风格设置为 Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Skip all std headers",
+                "text": "skip -gfi /usr/include/c++/**",
+                "ignoreFailures": true
+            }
+        ]
+    },
+    {
+        "name": "(gdb) Launch heuristic",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/heuristic/build/heuristic",
+        "preLaunchTask": "CMake: Build heuristic",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+
+        "setupCommands": [
+            {
+                "description": "为 gdb 启用整齐打印",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description": "将反汇编风格设置为 Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Skip all std headers",
+                "text": "skip -gfi /usr/include/c++/**",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Skip vector header",
+                "text": "skip -gfi /usr/include/c++/**/vector",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Skip basic_string header",
+                "text": "skip -gfi /usr/include/c++/**/basic_string.h",
+                "ignoreFailures": true
+            }
+        ]
+    }
+    ]
+}
