@@ -10,7 +10,7 @@
 
 class MasterProblem {
 public:
-    MasterProblem(const SchedulingData& data);
+    MasterProblem(const SchedulingData& data, std::string data_version);
     ~MasterProblem();
 
     // 初始化主问题模型
@@ -44,6 +44,7 @@ public:
     void printSolution() const;
 
 private:
+    std::string data_version_;
     // 引用外部数据
     const SchedulingData& data_;
     

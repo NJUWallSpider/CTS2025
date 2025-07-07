@@ -72,8 +72,11 @@ void CrewSchedule::action_add_flight(const Flight& flight){
 void CrewSchedule::action_add_bus(const Bus& bus){
     // get the last Duty Period
     DutyPeriod& last_duty_period = duty_periods_.back();
+    if(last_duty_period.tasks.empty()){
+        last_duty_period.tasks.emplace_back(bus);
+    }
     // if the lastest duty period is a FDuty and extendable
-    if(last_duty_period.tasks.empty() || (last_duty_period.is_FDuty && last_duty_period.can_be_extended)){
+    else if (last_duty_period.is_FDuty && last_duty_period.can_be_extended){
         // add the bus to the last duty period
         last_duty_period.tasks.emplace_back(bus);
     }

@@ -2,138 +2,6 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "CMake: Configure Pair-and-Assign",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "-S", "${workspaceFolder}/Pair-and-Assign/src",
-                "-B", "${workspaceFolder}/Pair-and-Assign/build",
-                "-G", "Unix Makefiles",
-                "-DCMAKE_BUILD_TYPE=Debug"
-            ],
-            "problemMatcher": "$gcc",
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            },
-            "detail": "为项目生成构建系统"
-        },
-        {
-            "label": "CMake: Build Pair-and-Assign",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build", "${workspaceFolder}/Pair-and-Assign/build",
-                "--parallel"
-            ],
-            "problemMatcher": "$gcc",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "detail": "编译项目",
-            "dependsOn": ["CMake: Configure Pair-and-Assign"]
-        },
-        {
-            "label": "Run Pair-and-Assign",
-            "type": "shell",
-            "command": "${workspaceFolder}/Pair-and-Assign/build/pair_and_assign",
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
-            "dependsOn": ["CMake: Build Pair-and-Assign"],
-            "detail": "运行编译后的可执行文件"
-        },
-        {
-            "label": "Build & Run Pair-and-Assign",
-            "type": "shell",
-            "command": "echo 'Running Build & Run'",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "CMake: Configure Pair-and-Assign",
-                "CMake: Build Pair-and-Assign",
-                "Run Pair-and-Assign"
-            ],
-            "group": "test",
-            "detail": "完整的构建并运行流程"
-        },
-        {
-            "label": "Clean Build Pair-and-Assign",
-            "type": "shell",
-            "command": "rm",
-            "args": [
-                "-rf", "${workspaceFolder}/Pair-and-Assign/build/*"
-            ],
-            "detail": "清理构建目录"
-        },
-        {
-            "label": "CMake: Configure GA",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "-S", "${workspaceFolder}/GA/src",
-                "-B", "${workspaceFolder}/GA/build",
-                "-G", "Unix Makefiles",
-                "-DCMAKE_BUILD_TYPE=Debug"
-            ],
-            "problemMatcher": "$gcc",
-            "group": {
-                "kind": "build",
-                "isDefault": false
-            },
-            "detail": "为项目生成构建系统"
-        },
-        {
-            "label": "CMake: Build GA",
-            "type": "shell",
-            "command": "cmake",
-            "args": [
-                "--build", "${workspaceFolder}/GA/build",
-                "--parallel"
-            ],
-            "problemMatcher": "$gcc",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "detail": "编译项目",
-            "dependsOn": ["CMake: Configure GA"]
-        },
-        {
-            "label": "Run GA",
-            "type": "shell",
-            "command": "mpirun --oversubscribe -n 15 ${workspaceFolder}/GA/build/GA",
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
-            "dependsOn": ["CMake: Build GA"],
-            "detail": "运行编译后的可执行文件"
-        },
-        {
-            "label": "Build & Run GA",
-            "type": "shell",
-            "command": "echo 'Running Build & Run'",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "CMake: Configure GA",
-                "CMake: Build GA",
-                "Run GA"
-            ],
-            "group": "test",
-            "detail": "完整的构建并运行流程"
-        },
-        {
-            "label": "Clean Build GA",
-            "type": "shell",
-            "command": "rm",
-            "args": [
-                "-rf", "${workspaceFolder}/GA/build/*"
-            ],
-            "detail": "清理构建目录"
-        },
-        {
             "label": "CMake: Configure heuristic",
             "type": "shell",
             "command": "cmake",
@@ -205,6 +73,75 @@
             "args": [
                 "-rf",
                 "${workspaceFolder}/heuristic/build/*"
+            ],
+            "detail": "清理构建目录"
+        },
+        {
+            "label": "CMake: Configure ExactSolver",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S", "${workspaceFolder}/exact_solver/src",
+                "-B", "${workspaceFolder}/exact_solver/build",
+                "-G", "Unix Makefiles",
+                "-DCMAKE_BUILD_TYPE=Debug",
+            ],
+            "hide": true,     
+            "problemMatcher": "$gcc",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "为项目生成构建系统"
+        },
+        {
+            "label": "CMake: Build ExactSolver",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build", "${workspaceFolder}/exact_solver/build",
+                "--parallel"
+            ],
+            "hide": true,     
+            "problemMatcher": "$gcc",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "编译项目",
+            "dependsOn": ["CMake: Configure ExactSolver"]
+        },
+        {
+            "label": "Run ExactSolver",
+            "type": "shell",
+            "command": "${workspaceFolder}/exact_solver/build/ExactSolver",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "hide": true,     
+            "dependsOn": ["CMake: Build ExactSolver"],
+            "detail": "运行编译后的可执行文件"
+        },
+        {
+            "label": "Build & Run ExactSolver",
+            "type": "shell",
+            "command": "echo 'Running Build & Run'",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "CMake: Configure ExactSolver",
+                "CMake: Build ExactSolver",
+                "Run ExactSolver"
+            ],
+            "group": "test",
+            "detail": "完整的构建并运行流程"
+        },
+        {
+            "label": "Clean Build ExactSolver",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-rf", "${workspaceFolder}/exact_solver/build/*"
             ],
             "detail": "清理构建目录"
         }

@@ -1,0 +1,1 @@
+export GUROBI_HOME=/Library/gurobi1202/macos_universal2 

@@ -12,6 +12,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_SOURCE_DIR}/../cmake")
 
+set(GUROBI_DIR $ENV{GUROBI_HOME} CACHE PATH "Path to Gurobi installation")
+message(STATUS "Setting GUROBI_DIR to: ${GUROBI_DIR}")
+
 # --- 关键部分：查找和配置 MPI ---
 # 这是最重要的一步。CMake会寻找MPI环境。
 # 它会自动将 CMAKE_CXX_COMPILER 设置为 mpic++。
@@ -26,6 +29,7 @@ include_directories(${GUROBI_INCLUDE_DIRS})
 message(STATUS "Found Gurobi include dirs: ${GUROBI_INCLUDE_DIRS}")
 message(STATUS "Found Gurobi library: ${GUROBI_LIBRARY}")
 message(STATUS "Found Gurobi C++ library: ${GUROBI_CXX_LIBRARY}")
+message(STATUS "GUROBI_HOME (from ENV): $ENV{GUROBI_HOME}")
 
 # --- 定义可执行文件 ---
 # 定义一个变量来存储你的可执行文件名，方便重用

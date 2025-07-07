@@ -180,7 +180,10 @@ bool CrewSchedule::Check_ddh_Bus_validity(const Bus& candidate_bus){
             // check the connection time
             if(candidate_bus.td - last_flight.sta < MIN_CONNECTION_TIME_BUS){
             return false;
-        }
+            }
+            else{
+                return true;
+            }
         }
     }
     else if(lastest_duty_period.is_FDuty && !lastest_duty_period.can_be_extended){
