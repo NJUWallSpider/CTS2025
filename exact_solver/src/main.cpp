@@ -23,9 +23,9 @@ int main(int argc, char** argv) {
         // }
 
         // 此处是所有使用到的数据路径
-        std::filesystem::path data_path = "/home/dbxp/cts-2025/data_0606"; 
-        std::string fdp_path = "/home/dbxp/cts-2025/fdp_networks"; // 储存FDP网络的文件夹路径
-        std::filesystem::path heuristic_path = "/home/dbxp/cts-2025/result_0606.csv"; // 储存启发式解的文件夹路径
+        std::filesystem::path data_path = "/home/dbxp/CTS-2025/data/0606"; 
+        std::string fdp_path = "/home/dbxp/CTS-2025/fdp_networks"; // 储存FDP网络的文件夹路径
+        std::filesystem::path heuristic_path = "/home/dbxp/CTS-2025/heuristic/report/rosterResult.csv"; // 储存启发式解的文件夹路径
         Date start_date{std::chrono::year(2025)/std::chrono::May/std::chrono::day(29)};
         Date end_date{std::chrono::year(2025)/std::chrono::June/std::chrono::day(4)};
         
@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
         double non_base_rejection_prob = 0; 
         
         // 设置任务数量阈值，超过此阈值将随机删除bus
-        size_t max_tasks_threshold = 6000;
+        size_t max_tasks_threshold = 5000;
         
         // 设置Beam搜索的宽度
         int beam_width = 25;
@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
         // 预处理所有机组的FDP网络
         std::cout << "\n预处理所有机组的FDP网络..." << std::endl;
         auto start_precompute = std::chrono::steady_clock::now();
-        subproblem.precomputeAllFDPNetworks();
+        subproblem.precomputeAllFDPNetworksParallel(NUM_THREADS);
         auto end_precompute = std::chrono::steady_clock::now();
         auto precompute_time = std::chrono::duration_cast<std::chrono::seconds>(end_precompute - start_precompute).count();
         std::cout << "FDP网络预处理完成，耗时: " << precompute_time << " 秒" << std::endl;

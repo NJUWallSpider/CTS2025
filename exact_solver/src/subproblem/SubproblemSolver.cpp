@@ -875,6 +875,147 @@ void SubproblemSolver::precomputeAllFDPNetworks() {
     std::cout << "所有机组的FDP网络计算完成并保存到 " << network_directory_ << " 目录" << std::endl;
 }
 
+void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
+    std::cout << "开始多线程预处理所有机组的FDP网络，使用 " << num_threads << " 个线程..." << std::endl;
+    
+    // 获取所有需要处理的机组ID
+    std::vector<std::string> all_crew_ids;
+    for (const auto& [crew_id, crew] : data_.get_all_crews()) {
+        std::string file_path = getNetworkFilePath(crew_id);
+        if (fs::exists(file_path)) {
+            continue;
+        }
+        all_crew_ids.push_back(crew_id);
+    }
+    
+    // 创建网络存储目录
+    if (!fs::exists(network_directory_)) {
+        try {
+            fs::create_directories(network_directory_);
+        } catch (const std::exception& e) {
+            std::cerr << "创建网络目录失败: " << e.what() << std::endl;
+            return;
+        }
+    }
+    
+    size_t total_count = all_crew_ids.size();
+    std::atomic<size_t> processed_count(0);
+    std::mutex cout_mutex; // 用于保护输出操作
+    
+    // 创建任务队列
+    std::mutex queue_mutex;
+    size_t next_index = 0;
+    
+    // 创建线程池
+    std::vector<std::thread> threads;
+    
+    auto worker_function = [&]() {
+        // 每个线程创建自己的SubproblemSolver实例，避免共享缓存
+        SubproblemSolver local_solver(data_, master_, network_directory_, 
+                                      non_base_rejection_prob_, beam_width_);
+        
+        while (true) {
+            // 获取下一个要处理的机组ID
+            std::string crew_id;
+            {
+                std::lock_guard<std::mutex> lock(queue_mutex);
+                if (next_index >= all_crew_ids.size()) {
+                    break; // 所有任务已分配完毕
+                }
+                crew_id = all_crew_ids[next_index++];
+            }
+            
+            try {
+                // 过滤有效的FDP - 使用本地实例避免缓存冲突
+                std::vector<FDP> valid_fdps = local_solver.filterValidFDPs(crew_id);
+                
+                if (!valid_fdps.empty()) {
+                    // 构建网络 - 使用本地实例避免缓存冲突
+                    FDPNetwork network = local_solver.buildFDPNetwork(crew_id, valid_fdps);
+                    
+                    // 保存到文件 - 每个线程写入不同的文件，避免IO冲突
+                    std::string file_path = getNetworkFilePath(crew_id);
+                    
+                    // 使用临时文件路径
+                    // std::string temp_file_path = file_path + ".tmp";
+
+                    local_solver.serializeFDPNetwork(crew_id, network, file_path);
+                    
+                    // // 尝试最多3次序列化和验证
+                    // bool success = false;
+                    // for (int attempt = 0; attempt < 3 && !success; ++attempt) {
+                    //     // 序列化到临时文件
+                    //     if (!local_solver.serializeFDPNetwork(crew_id, network, temp_file_path)) {
+                    //         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    //         continue;
+                    //     }
+                        
+                    //     // 验证临时文件
+                    //     FDPNetwork test_network;
+                    //     if (!local_solver.deserializeFDPNetwork(crew_id, temp_file_path, test_network)) {
+                    //         fs::remove(temp_file_path);
+                    //         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    //         continue;
+                    //     }
+                        
+                    //     // 比较原始网络和反序列化网络
+                    //     if (local_solver.compareNetworks(network, test_network)) {
+                    //         // 验证成功，将临时文件重命名为最终文件
+                    //         try {
+                    //             if (fs::exists(file_path)) {
+                    //                 fs::remove(file_path);
+                    //             }
+                    //             fs::rename(temp_file_path, file_path);
+                    //             success = true;
+                    //         } catch (const std::exception& e) {
+                    //             std::lock_guard<std::mutex> lock(cout_mutex);
+                    //             std::cerr << "重命名文件失败: " << e.what() << std::endl;
+                    //         }
+                    //     } else {
+                    //         // 验证失败，删除临时文件并重试
+                    //         fs::remove(temp_file_path);
+                    //         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    //     }
+                    // }
+                    
+                    // if (!success) {
+                    //     std::lock_guard<std::mutex> lock(cout_mutex);
+                    //     std::cerr << "处理机组 " << crew_id << " 失败，已尝试3次" << std::endl;
+                    // }
+                
+                }
+                
+                // 更新进度并输出
+                size_t current = ++processed_count;
+                {
+                    std::lock_guard<std::mutex> lock(cout_mutex);
+                    std::cout << "已处理 " << current << " / " << total_count 
+                             << " 个机组的FDP网络 (" 
+                             << std::fixed << std::setprecision(1) 
+                             << (100.0 * current / total_count) << "%)" << std::endl;
+                }
+            } catch (const std::exception& e) {
+                std::lock_guard<std::mutex> lock(cout_mutex);
+                std::cerr << "处理机组 " << crew_id << " 时发生错误: " << e.what() << std::endl;
+            }
+        }
+    };
+    
+    // 启动工作线程
+    for (int i = 0; i < num_threads; ++i) {
+        threads.emplace_back(worker_function);
+    }
+    
+    // 等待所有线程完成
+    for (auto& thread : threads) {
+        if (thread.joinable()) {
+            thread.join();
+        }
+    }
+    
+    std::cout << "所有机组的FDP网络计算完成并保存到 " << network_directory_ << " 目录" << std::endl;
+}
+
 
 std::string SubproblemSolver::getNetworkFilePath(const std::string& crew_id) const {
     return network_directory_ + "/" + crew_id + ".fdp";
@@ -885,8 +1026,7 @@ bool SubproblemSolver::serializeFDPNetwork(const std::string& crew_id, const FDP
     try {
         // 创建父目录
         fs::path file_path(filename);
-        std::cout << "准备写入FDP网络文件: " << file_path << std::endl;
-        std::cout << "父目录: " << file_path.parent_path() << std::endl;
+        fs::create_directories(file_path.parent_path());
         
         // 打开文件
         std::ofstream file(filename, std::ios::binary);
@@ -903,10 +1043,39 @@ bool SubproblemSolver::serializeFDPNetwork(const std::string& crew_id, const FDP
         
         // 写入FDP序列
         for (const auto& fdp : network.sorted_fdps) {
-            std::string fdp_str = serializeFDP(fdp);
-            size_t str_len = fdp_str.size();
-            file.write(reinterpret_cast<const char*>(&str_len), sizeof(str_len));
-            file.write(fdp_str.c_str(), str_len);
+            // 写入任务数量
+            size_t task_count = fdp.tasks.size();
+            file.write(reinterpret_cast<const char*>(&task_count), sizeof(task_count));
+            
+            // 写入每个任务
+            for (const auto& task : fdp.tasks) {
+                // 写入字符串长度和内容
+                auto writeString = [&file](const std::string& str) {
+                    size_t len = str.size();
+                    file.write(reinterpret_cast<const char*>(&len), sizeof(len));
+                    file.write(str.c_str(), len);
+                };
+                
+                writeString(task.id);
+                writeString(task.task_type);
+                writeString(task.start_airport);
+                writeString(task.end_airport);
+                writeString(task.aircraft_no);
+                
+                // 直接写入时间点的时间戳（微秒）
+                auto writeTimePoint = [&file](const time_point& tp) {
+                    auto duration = tp.time_since_epoch();
+                    int64_t microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+                    file.write(reinterpret_cast<const char*>(&microseconds), sizeof(microseconds));
+                };
+                
+                writeTimePoint(task.start_time);
+                writeTimePoint(task.end_time);
+                
+                // 写入飞行时间（分钟）
+                int64_t fly_minutes = task.fly_time.count();
+                file.write(reinterpret_cast<const char*>(&fly_minutes), sizeof(fly_minutes));
+            }
         }
         
         // 写入图结构
@@ -949,13 +1118,49 @@ bool SubproblemSolver::deserializeFDPNetwork(const std::string& crew_id, const s
         network.sorted_fdps.reserve(n);
         
         for (size_t i = 0; i < n; ++i) {
-            size_t str_len;
-            file.read(reinterpret_cast<char*>(&str_len), sizeof(str_len));
+            FDP fdp;
             
-            std::string fdp_str(str_len, '\0');
-            file.read(&fdp_str[0], str_len);
+            // 读取任务数量
+            size_t task_count;
+            file.read(reinterpret_cast<char*>(&task_count), sizeof(task_count));
             
-            FDP fdp = deserializeFDP(fdp_str);
+            // 读取每个任务
+            for (size_t j = 0; j < task_count; ++j) {
+                Task task;
+                
+                // 读取字符串
+                auto readString = [&file]() -> std::string {
+                    size_t len;
+                    file.read(reinterpret_cast<char*>(&len), sizeof(len));
+                    std::string str(len, '\0');
+                    file.read(&str[0], len);
+                    return str;
+                };
+                
+                task.id = readString();
+                task.task_type = readString();
+                task.start_airport = readString();
+                task.end_airport = readString();
+                task.aircraft_no = readString();
+                
+                // 读取时间点
+                auto readTimePoint = [&file]() -> time_point {
+                    int64_t microseconds;
+                    file.read(reinterpret_cast<char*>(&microseconds), sizeof(microseconds));
+                    return time_point(std::chrono::microseconds(microseconds));
+                };
+                
+                task.start_time = readTimePoint();
+                task.end_time = readTimePoint();
+                
+                // 读取飞行时间
+                int64_t fly_minutes;
+                file.read(reinterpret_cast<char*>(&fly_minutes), sizeof(fly_minutes));
+                task.fly_time = std::chrono::minutes(fly_minutes);
+                
+                fdp.tasks.push_back(task);
+            }
+            
             network.sorted_fdps.push_back(fdp);
         }
         
@@ -1071,11 +1276,11 @@ FDP SubproblemSolver::deserializeFDP(const std::string& str) const {
 
 bool SubproblemSolver::compareTasks(const Task& t1, const Task& t2) const {
     if (t1.id != t2.id) {
-        std::cout << "  - Task ID mismatch: " << t1.id << " vs " << t2.id << std::endl;
+        // std::cout << "  - Task ID mismatch: " << t1.id << " vs " << t2.id << std::endl;
         return false;
     }
     if (t1.task_type != t2.task_type) {
-        std::cout << "  - Task type mismatch: " << t1.task_type << " vs " << t2.task_type << std::endl;
+        // std::cout << "  - Task type mismatch: " << t1.task_type << " vs " << t2.task_type << std::endl;
         return false;
     }
     if (t1.start_airport != t2.start_airport) {
@@ -1091,7 +1296,7 @@ bool SubproblemSolver::compareTasks(const Task& t1, const Task& t2) const {
         return false;
     }
     if (t1.end_time != t2.end_time) {
-        std::cout << "  - Task end_time mismatch" << std::endl;
+        // std::cout << "  - Task end_time mismatch" << std::endl;
         return false;
     }
     if (t1.fly_time != t2.fly_time) {
@@ -1107,12 +1312,12 @@ bool SubproblemSolver::compareTasks(const Task& t1, const Task& t2) const {
 
 bool SubproblemSolver::compareFDPs(const FDP& f1, const FDP& f2) const {
     if (f1.tasks.size() != f2.tasks.size()) {
-        std::cout << " - FDP tasks size mismatch: " << f1.tasks.size() << " vs " << f2.tasks.size() << std::endl;
+        // std::cout << " - FDP tasks size mismatch: " << f1.tasks.size() << " vs " << f2.tasks.size() << std::endl;
         return false;
     }
     for (size_t i = 0; i < f1.tasks.size(); ++i) {
         if (!compareTasks(f1.tasks[i], f2.tasks[i])) {
-            std::cout << " - Difference in Task at index " << i << std::endl;
+            // std::cout << " - Difference in Task at index " << i << std::endl;
             return false;
         }
     }
@@ -1169,24 +1374,11 @@ bool SubproblemSolver::compareNetworks(const FDPNetwork& n1, const FDPNetwork& n
 }
 
 
-void SubproblemSolver::testSerialization(const std::string& crew_id) {
+bool SubproblemSolver::testSerialization(const std::string& crew_id, FDPNetwork& original_network) {
     std::cout << "\n======================================================\n";
     std::cout << "开始对机组 " << crew_id << " 进行网络序列化测试" << std::endl;
     std::cout << "======================================================\n";
 
-    // 1. 过滤该机组有效的FDPs
-    std::vector<FDP> valid_fdps = filterValidFDPs(crew_id);
-    if (valid_fdps.empty()) {
-        std::cout << "机组 " << crew_id << " 没有有效的FDP，无法进行测试。" << std::endl;
-        return;
-    }
-    std::cout << "找到 " << valid_fdps.size() << " 个有效FDP。" << std::endl;
-
-    // 2. 在内存中构建原始网络
-    std::cout << "在内存中构建原始FDP网络..." << std::endl;
-    FDPNetwork original_network = buildFDPNetwork(crew_id, valid_fdps);
-    std::cout << "原始网络构建完成。" << std::endl;
-    
     // 打印原始网络的基本信息
     std::cout << "原始网络信息：" << std::endl;
     std::cout << " - FDP数量: " << original_network.sorted_fdps.size() << std::endl;
@@ -1209,7 +1401,7 @@ void SubproblemSolver::testSerialization(const std::string& crew_id) {
     std::cout << "序列化网络到临时文件: " << temp_filename << "..." << std::endl;
     if (!serializeFDPNetwork(crew_id, original_network, temp_filename)) {
         std::cerr << "序列化网络失败。测试中止。" << std::endl;
-        return;
+        return false;
     }
     std::cout << "序列化成功。" << std::endl;
 
@@ -1219,7 +1411,7 @@ void SubproblemSolver::testSerialization(const std::string& crew_id) {
     if (!deserializeFDPNetwork(crew_id, temp_filename, deserialized_network)) {
         std::cerr << "反序列化网络失败。测试中止。" << std::endl;
         fs::remove(temp_filename);
-        return;
+        return false;
     }
     std::cout << "反序列化成功。" << std::endl;
     
@@ -1244,16 +1436,16 @@ void SubproblemSolver::testSerialization(const std::string& crew_id) {
     std::cout << "\n--- 比较原始网络和反序列化网络 ---\n" << std::endl;
     bool are_identical = compareNetworks(original_network, deserialized_network);
 
+    // 6. 清理临时文件
+    fs::remove(temp_filename);
+
     std::cout << "\n--- 测试结果 ---\n";
     if (are_identical) {
         std::cout << "成功：原始网络和反序列化网络完全一致。" << std::endl;
+        return true;
     } else {
         std::cout << "失败：在原始网络和反序列化网络之间发现差异。" << std::endl;
+        return false;
     }
-     std::cout << "======================================================\n" << std::endl;
-
-    // 6. 清理临时文件
-    fs::remove(temp_filename);
-    std::cout << "已清理临时文件: " << temp_filename << std::endl;
 }
 

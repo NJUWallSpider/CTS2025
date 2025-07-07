@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <chrono>
 #include <functional>
+#include <thread>
 
 // 前向声明
 class MasterProblem;
@@ -45,9 +46,11 @@ public:
     
     // 预处理所有机组的FDP网络并保存
     void precomputeAllFDPNetworks();
+
+    void precomputeAllFDPNetworksParallel(int num_threads = std::thread::hardware_concurrency());
     
     // 测试FDP网络的序列化与反序列化
-    void testSerialization(const std::string& crew_id);
+    bool testSerialization(const std::string& crew_id, FDPNetwork& original_network);
     
 private:
 
