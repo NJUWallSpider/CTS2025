@@ -937,52 +937,42 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
                     std::string file_path = getNetworkFilePath(crew_id);
                     
                     // 使用临时文件路径
-                    // std::string temp_file_path = file_path + ".tmp";
+                    std::string temp_file_path = file_path + ".tmp";
 
-                    local_solver.serializeFDPNetwork(crew_id, network, file_path);
+                    // local_solver.serializeFDPNetwork(crew_id, network, file_path);
                     
-                    // // 尝试最多3次序列化和验证
-                    // bool success = false;
-                    // for (int attempt = 0; attempt < 3 && !success; ++attempt) {
-                    //     // 序列化到临时文件
-                    //     if (!local_solver.serializeFDPNetwork(crew_id, network, temp_file_path)) {
-                    //         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    //         continue;
-                    //     }
+                    // 尝试最多3次序列化和验证
+                    bool success = false;
+                    while (!success) {
+                        // 序列化到临时文件
+                        if (!local_solver.serializeFDPNetwork(crew_id, network, temp_file_path)) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                            continue;
+                        }
                         
-                    //     // 验证临时文件
-                    //     FDPNetwork test_network;
-                    //     if (!local_solver.deserializeFDPNetwork(crew_id, temp_file_path, test_network)) {
-                    //         fs::remove(temp_file_path);
-                    //         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    //         continue;
-                    //     }
+                        // 验证临时文件
+                        FDPNetwork test_network;
+                        if (!local_solver.deserializeFDPNetwork(crew_id, temp_file_path, test_network)) {
+                            fs::remove(temp_file_path);
+                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                            continue;
+                        }
                         
-                    //     // 比较原始网络和反序列化网络
-                    //     if (local_solver.compareNetworks(network, test_network)) {
-                    //         // 验证成功，将临时文件重命名为最终文件
-                    //         try {
-                    //             if (fs::exists(file_path)) {
-                    //                 fs::remove(file_path);
-                    //             }
-                    //             fs::rename(temp_file_path, file_path);
-                    //             success = true;
-                    //         } catch (const std::exception& e) {
-                    //             std::lock_guard<std::mutex> lock(cout_mutex);
-                    //             std::cerr << "重命名文件失败: " << e.what() << std::endl;
-                    //         }
-                    //     } else {
-                    //         // 验证失败，删除临时文件并重试
-                    //         fs::remove(temp_file_path);
-                    //         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    //     }
-                    // }
-                    
-                    // if (!success) {
-                    //     std::lock_guard<std::mutex> lock(cout_mutex);
-                    //     std::cerr << "处理机组 " << crew_id << " 失败，已尝试3次" << std::endl;
-                    // }
-                
+                        // 比较原始网络和反序列化网络
+                        if (local_solver.compareNetworks(network, test_network)) {
+                            // 验证成功，将临时文件重命名为最终文件
+                            try {
+                                if (fs::exists(file_path)) {
+                                    fs::remove(file_path);
+                                }
+                                fs::rename(temp_file_path, file_path);
+                                success = true;
+                            } catch (const std::exception& e) {
+                                std::lock_guard<std::mutex> lock(cout_mutex);
+                                std::cerr << "重命名文件失败: " << e.what() << std::endl;
+                            }
+                        }
+                    }
                 }
                 
                 // 更新进度并输出

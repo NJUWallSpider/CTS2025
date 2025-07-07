@@ -12,7 +12,7 @@ Solver::Solver(int argc, char* argv[]) {}
 
 void Solver::run() {    
 
-    std::filesystem::path data_dir = "/home/dbxp/CTS-2025/data/0623";
+    std::filesystem::path data_dir = "/home/bhz/new-cts/data/0606";
     const DataLoader data_loader(data_dir);
 
     SolutionConstructor solution_constructor(data_loader);
@@ -25,9 +25,10 @@ void Solver::run() {
         SolutionState current_solution = solution_constructor.generate_schedule();
         if (current_solution.score > best_solution.score) {
             best_solution = current_solution;
-            ReportGenerator::generate_schedule_report(current_solution, data_loader, "/home/dbxp/CTS-2025/heuristic/report/schedule_report.txt", start_time);
-            ReportGenerator::generate_submission_csv(current_solution, "/home/dbxp/CTS-2025/heuristic/report/rosterResult.csv");
-            ReportGenerator::validate_crew_flight_consistency(current_solution, "/home/dbxp/CTS-2025/heuristic/report/crew_flight_consistency.txt");
+            std::string directory = "/home/bhz/new-cts/heuristic/report/";
+            ReportGenerator::generate_schedule_report(current_solution, data_loader, directory + "schedule_report.txt", start_time);
+            ReportGenerator::generate_submission_csv(current_solution, directory + "rosterResult.csv");
+            ReportGenerator::validate_crew_flight_consistency(current_solution, directory + "crew_flight_consistency.txt");
         }
     }
 
