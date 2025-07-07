@@ -2,7 +2,7 @@
     "python-envs.defaultEnvManager": "ms-python.python:conda",
     "python-envs.defaultPackageManager": "ms-python.python:conda",
     "python-envs.pythonProjects": [],
-    "cmake.sourceDirectory": "/home/dbxp/cts-2025/exact_solver/src",
+    "cmake.sourceDirectory": "/home/bhz/CTS-2025/Pair-and-Assign/src",
     "files.associations": {
         "algorithm": "cpp",
         "array": "cpp",
@@ -78,7 +78,6 @@
         "ios": "cpp",
         "locale": "cpp",
         "queue": "cpp",
-        "cstdbool": "cpp",
-        "valarray": "cpp"
+        "cstdbool": "cpp"
     }
 }

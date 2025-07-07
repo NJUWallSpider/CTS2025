@@ -133,8 +133,11 @@ void DataLoader::_link_crew_qualifications(const std::filesystem::path& file_pat
     
     std::string crewId, legId;
     while(in.read_row(crewId, legId)) {
-        // crewId = crewId.substr(1, crewId.size() - 2); // 去掉引号
-        // legId = legId.substr(1, legId.size() - 2); 
+        if(file_path.string() == "data/0606/crewLegMatch.csv") {
+            crewId = crewId.substr(1, crewId.size() - 2); // 去掉引号
+            legId = legId.substr(1, legId.size() - 2); 
+        }
+
         auto it = crews_.find(crewId);
         if (it != crews_.end()) {
             it->second.qualifications.insert(legId);
