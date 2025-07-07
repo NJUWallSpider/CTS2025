@@ -13,7 +13,8 @@ Solver::Solver(int argc, char* argv[]) {}
 
 void Solver::run() {    
 
-    std::filesystem::path data_dir = "/home/bhz/new-cts/data/0606";
+    std::string data_version = "0606";
+    std::filesystem::path data_dir = std::filesystem::path("data") / data_version;
     const DataLoader data_loader(data_dir);
 
     SolutionConstructor solution_constructor(data_loader);

@@ -78,7 +78,6 @@
         "ios": "cpp",
         "locale": "cpp",
         "queue": "cpp",
-        "cstdbool": "cpp",
-        "valarray": "cpp"
+        "cstdbool": "cpp"
     }
 }
