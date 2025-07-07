@@ -12,7 +12,7 @@ Solver::Solver(int argc, char* argv[]) {}
 
 void Solver::run() {    
 
-    std::string data_version = "0623";
+    std::string data_version = "0606";
     std::filesystem::path data_dir = std::filesystem::path("data") / data_version;
     const DataLoader data_loader(data_dir);
 
@@ -26,7 +26,7 @@ void Solver::run() {
         SolutionState current_solution = solution_constructor.generate_schedule();
         if (current_solution.score > best_solution.score) {
             best_solution = current_solution;
-            ReportGenerator::generate_schedule_report(current_solution, data_loader, "heuristic/report/" + data_version + "/schedule_report.txt", start_time);
+            ReportGenerator::generate_schedule_report(current_solution, data_loader, "heuristic/report/" + data_version , start_time);
             ReportGenerator::generate_submission_csv(current_solution, "heuristic/report/" + data_version + "/rosterResult.csv");
             ReportGenerator::validate_crew_flight_consistency(current_solution, "heuristic/report/" + data_version + "/crew_flight_consistency.txt");
         }

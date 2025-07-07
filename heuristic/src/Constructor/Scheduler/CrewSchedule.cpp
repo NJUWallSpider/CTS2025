@@ -2,6 +2,7 @@
 #include "../../Loader/Utils.h"
 #include <chrono>
 #include <iostream>
+#include <string>
 #include <vector>
 #include <variant>
 #include <map>
@@ -20,29 +21,36 @@ std::vector<Cycle>& cycles)
 
 
 void CrewSchedule::construct_schedule_DFS() {
-    /////////////////END CONDITION///////////////
+
     
     /////////////////SEARCH/////////////////////
     //STEP 1. Find all possible next tasks (flights and buses) from the CURRENT airport and the last task end time
     std::vector<std::variant<Flight, Bus, GroundDuty>> candidates;
+    int flight_count = 0;
+    int bus_count = 0;
     for (const auto& flight : data_.getFlights()) {
         if (flight.depaAirport == current_airport_ && flight.std >= last_task_end_time_ ) {
             candidates.emplace_back(flight);
+            flight_count++;
         }
     }
     for (const auto& bus : data_.getBuses()) {
         if (bus.depaAirport == current_airport_ && bus.td >= last_task_end_time_) {
             candidates.emplace_back(bus);
-        }
-    }
-    for (const auto& ground_duty : crew_.groundDuties) {
-        if ( ground_duty.start_time > last_task_end_time_) {
-            candidates.emplace_back(ground_duty);
+            bus_count++;
         }
     }
 
+    // for (const auto& ground_duty : crew_.groundDuties) {
+    //     if ( ground_duty.start_time > last_task_end_time_) {
+    //         candidates.emplace_back(ground_duty);
+    //     }
+    // }
+
+    std::vector<std::string> layover_spots = data_.getLayoverStations();
+
     // Sort candidates with flights first, then buses, then ground duties, each sorted chronologically
-    std::sort(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) {
+    std::sort(candidates.begin(), candidates.end(), [&](const auto& a, const auto& b) {
         
         // First compare by task type priority (flight > bus > ground duty)
         bool a_is_flight = std::holds_alternative<Flight>(a);
@@ -57,7 +65,49 @@ void CrewSchedule::construct_schedule_DFS() {
         return get_start_time(a) < get_start_time(b);
     });
 
-    // STEP2. Iterate through sorted candidates.
+        // 1. Check if last duty period is FDP and cannot be extended
+    if (!duty_periods_.empty() && duty_periods_.back().is_FDuty && !duty_periods_.back().can_be_extended) {
+        // 2. Extract buses from candidates
+        std::vector<Bus> candidate_buses;
+        for (const auto& candidate : candidates) {
+            if (std::holds_alternative<Bus>(candidate)) {
+                candidate_buses.push_back(std::get<Bus>(candidate));
+            }
+        }
+
+        // 3. Sort buses according to the rules
+        std::sort(candidate_buses.begin(), candidate_buses.end(), [&](const Bus& a, const Bus& b) {
+            // Priority 1: Arrival airport is crew base
+            if (a.arriAirport == crew_.base && b.arriAirport != crew_.base) return true;
+            if (a.arriAirport != crew_.base && b.arriAirport == crew_.base) return false;
+
+            // Priority 2: Arrival airport is in layover stations
+            bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), a.arriAirport) != layover_spots.end();
+            bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), b.arriAirport) != layover_spots.end();
+            if (a_is_layover && !b_is_layover) return true;
+            if (!a_is_layover && b_is_layover) return false;
+
+            // Priority 3: Chronological by departure time
+            return a.td < b.td;
+        });
+
+        // 4. Replace the bus candidates in the original candidates vector
+        // Remove all buses from candidates
+        candidates.erase(
+            std::remove_if(candidates.begin(), candidates.end(),
+                [](const auto& c) { return std::holds_alternative<Bus>(c); }),
+            candidates.end()
+        );
+        // Insert sorted buses after flights (or at the appropriate position)
+        // Find the position after the last flight
+        auto insert_pos = std::find_if(candidates.begin(), candidates.end(),
+            [](const auto& c) { return !std::holds_alternative<Flight>(c); });
+        candidates.insert(insert_pos, candidate_buses.begin(), candidate_buses.end());
+    }
+
+
+
+        // STEP2. Iterate through sorted candidates.
     for (auto& candidate_task : candidates) {
         // copy the current state
         std::vector<DutyPeriod> backup_duty_periods = duty_periods_;

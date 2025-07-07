@@ -2,6 +2,7 @@
 #include "../SolutionState.hpp"
 #include "../../Loader/Utils.h"
 #include <chrono>
+#include <cstdio>
 #include <iostream>
 #include <vector>
 #include <variant>
@@ -44,8 +45,8 @@ void CrewSchedule::action_add_flight(const Flight& flight){
             duty_periods_.emplace_back(new_duty_period);
         }
         else{
-        // add the flight to the last duty period
-        last_duty_period.tasks.emplace_back(flight);
+            // add the flight to the last duty period
+            last_duty_period.tasks.emplace_back(flight);
         }
 
     }
@@ -60,10 +61,17 @@ void CrewSchedule::action_add_flight(const Flight& flight){
     }
     // if the lastest duty period is a NFDuty
     else{
-        // start a new FDutyP
-        DutyPeriod new_duty_period;
-        new_duty_period.tasks.emplace_back(flight);
-        duty_periods_.emplace_back(new_duty_period);
+        if(flight.std - last_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
+            
+            DutyPeriod new_duty_period;
+            new_duty_period.tasks.emplace_back(flight);
+            duty_periods_.emplace_back(new_duty_period);
+        }
+        else{
+            // add the flight to the last duty period
+            last_duty_period.tasks.emplace_back(flight);
+        }
+
     }
 
 
@@ -77,11 +85,19 @@ void CrewSchedule::action_add_bus(const Bus& bus){
     }
     // if the lastest duty period is a FDuty and extendable
     else if (last_duty_period.is_FDuty && last_duty_period.can_be_extended){
-        // add the bus to the last duty period
-        last_duty_period.tasks.emplace_back(bus);
+        if(bus.td - last_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
+            DutyPeriod new_duty_period;
+            new_duty_period.tasks.emplace_back(bus);
+            duty_periods_.emplace_back(new_duty_period);
+        }
+        else if(bus.td - last_duty_period.endTime >= MIN_CONNECTION_TIME_BUS){
+            // add the bus to the last duty period
+            last_duty_period.tasks.emplace_back(bus);
+        }
     }
+        
     // if the lastest duty period is a FDuty and not extendable
-    else if(last_duty_period.is_FDuty && !last_duty_period.can_be_extended){
+    else if (last_duty_period.is_FDuty && !last_duty_period.can_be_extended){
         // start a new FDutyP
         DutyPeriod new_duty_period;
         new_duty_period.tasks.emplace_back(bus);
@@ -89,8 +105,15 @@ void CrewSchedule::action_add_bus(const Bus& bus){
     }
     // if the lastest duty period is a NFDuty
     else{
-        // add the bus to the last duty period
-        last_duty_period.tasks.emplace_back(bus);
+        if(bus.td - last_duty_period.endTime >= MIN_REST_BEFORE_FDUTY){
+            DutyPeriod new_duty_period;
+            new_duty_period.tasks.emplace_back(bus);
+            duty_periods_.emplace_back(new_duty_period);
+        }
+        else{
+            // add the bus to the last duty period
+            last_duty_period.tasks.emplace_back(bus);
+        }
     }
 }
 
