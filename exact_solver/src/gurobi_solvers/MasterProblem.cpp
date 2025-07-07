@@ -7,8 +7,8 @@
 #include <chrono>
 #include "../data_model/ReportGenerator.hpp"
 
-MasterProblem::MasterProblem(const SchedulingData& data)
-    : data_(data), env_(), iteration_count_(0), converged_(false) {
+MasterProblem::MasterProblem(const SchedulingData& data, std::string data_version)
+    : data_(data), env_(), iteration_count_(0), converged_(false), data_version_(data_version) {
     try {
         // 设置Gurobi环境
         env_.set(GRB_IntParam_OutputFlag, 0); // 禁用Gurobi输出，可根据需要调整
@@ -332,7 +332,8 @@ void MasterProblem::printSolution() const {
             // }
 
             // 保存结果到CSV文件
-            std::ofstream out_file("submission.csv");
+        
+            std::ofstream out_file("exact_solver/report/" + data_version_ + "/rosterResult.csv");
             if (!out_file) {
                 throw std::runtime_error("无法创建输出文件");
             }
@@ -352,7 +353,7 @@ void MasterProblem::printSolution() const {
             }
 
             out_file.close();
-            std::cout << "\n结果已保存到 submission.csv" << std::endl;
+            std::cout << "\n结果已保存到 exact_solver/report/" + data_version_ + "/rosterResult.csv" << std::endl;
 
             // 生成可读报告
             ReportGenerator::generate_readable_report(crew_assignments, "solution_report.txt", uncovered_flights);

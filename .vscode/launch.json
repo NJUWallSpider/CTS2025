@@ -1,116 +1,76 @@
 {
     "configurations": [
-    {
-        "name": "(gdb) 启动",
-        "type": "cppdbg",
-        "request": "launch",
-        "program": "${workspaceFolder}/GA/build/GA",
-        "preLaunchTask": "CMake: Build GA",
-        "args": [],
-        "stopAtEntry": false,
-        "cwd": "${workspaceFolder}",
-        "environment": [],
-        "externalConsole": false,
-        "MIMode": "gdb",
-        "setupCommands": [
-            {
-                "description": "为 gdb 启用整齐打印",
-                "text": "-enable-pretty-printing",
-                "ignoreFailures": true
-            },
-            {
-                "description": "将反汇编风格设置为 Intel",
-                "text": "-gdb-set disassembly-flavor intel",
-                "ignoreFailures": true
-            },
-            {
-                "description": "Skip all std headers",
-                "text": "skip -gfi /usr/include/c++/**",
-                "ignoreFailures": true
-            }
-        ]
-    },
-    {
-        "name": "(gdb) Launch heuristic",
-        "type": "cppdbg",
-        "request": "launch",
-        "program": "${workspaceFolder}/heuristic/build/heuristic",
-        "preLaunchTask": "CMake: Build heuristic",
-        "args": [],
-        "stopAtEntry": false,
-        "cwd": "${workspaceFolder}",
-        "environment": [],
-        "externalConsole": false,
-        "MIMode": "gdb",
-
-        "setupCommands": [
-            {
-                "description": "为 gdb 启用整齐打印",
-                "text": "-enable-pretty-printing",
-                "ignoreFailures": true
-            },
-            {
-                "description": "将反汇编风格设置为 Intel",
-                "text": "-gdb-set disassembly-flavor intel",
-                "ignoreFailures": true
-            },
-            {
-                "description": "Skip all std headers",
-                "text": "skip -gfi /usr/include/c++/**",
-                "ignoreFailures": true
-            },
-            {
-                "description": "Skip vector header",
-                "text": "skip -gfi /usr/include/c++/**/vector",
-                "ignoreFailures": true
-            },
-            {
-                "description": "Skip basic_string header",
-                "text": "skip -gfi /usr/include/c++/**/basic_string.h",
-                "ignoreFailures": true
-            }
-        ]
-    },
-    {
-        "name": "(lldb) 启动",
-        "type": "cppdbg",
-        "request": "launch",
-        "program": "${workspaceFolder}/GA/build/GA",
-        "preLaunchTask": "CMake: Build GA",
-        "args": [],
-        "stopAtEntry": false,
-        "cwd": "${workspaceFolder}",
-        "environment": [],
-        "externalConsole": false,
-        "MIMode": "lldb",
-        "setupCommands": [
-            {
-                "description": "Enable LLDB logging for scripts",
-                "text": "log enable lldb",
-                "ignoreFailures": true
-            },
-            {
-                "description": "Enable pretty-printing for lldb",
-                "text": "settings set target.print-object-description true",
-                "ignoreFailures": true
-            },
-            {
-                "description": "Load custom TimePoint pretty printer",
-                "text": "command script import ${workspaceFolder}/.vscode/lldb_printers.py",
-                "ignoreFailures": true
-            },
-            {
-                "description": "Add TimePoint pretty printer for std::chrono::time_point",
-                "text": "type summary add -x \"std::chrono::time_point<std::chrono::system_clock,.*>\" --python-function lldb_printers.TimePoint_SummaryProvider",
-                "ignoreFailures": true
-            },
-            {
-                "description": "Add TimePoint pretty printer for typedef TimePoint",
-                "text": "type summary add -x \"^TimePoint$\" --python-function lldb_printers.TimePoint_SummaryProvider",
-                "ignoreFailures": true
-            }
-        ]
-    },
+        {
+            "name": "(gdb) launch exact solver",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/exact_solver/build/ExactSolver",
+            "preLaunchTask": "CMake: Build ExactSolver",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "enable pretty printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "将反汇编风格设置为 Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Skip all std headers",
+                    "text": "skip -gfi /usr/include/c++/**",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "(gdb) Launch heuristic",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/heuristic/build/heuristic",
+            "preLaunchTask": "CMake: Build heuristic",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+    
+            "setupCommands": [
+                {
+                    "description": "为 gdb 启用整齐打印",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "将反汇编风格设置为 Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Skip all std headers",
+                    "text": "skip -gfi /usr/include/c++/**",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Skip vector header",
+                    "text": "skip -gfi /usr/include/c++/**/vector",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Skip basic_string header",
+                    "text": "skip -gfi /usr/include/c++/**/basic_string.h",
+                    "ignoreFailures": true
+                }
+            ]
+        },
     {
         "name": "(lldb) Launch heuristic",
         "type": "cppdbg",
@@ -150,6 +110,47 @@
                 "ignoreFailures": true
             }
         ]
+    },
+    {
+        "name": "(lldb) Launch exact solver",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/exact_solver/build/ExactSolver",
+        "preLaunchTask": "CMake: Build ExactSolver",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "lldb",
+        "setupCommands": [
+            {
+                "description": "Enable LLDB logging for scripts",
+                "text": "log enable lldb",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Enable pretty-printing for lldb",
+                "text": "settings set target.print-object-description true",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Load custom TimePoint pretty printer",
+                "text": "command script import ${workspaceFolder}/.vscode/lldb_printers.py",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Add TimePoint pretty printer for std::chrono::time_point",
+                "text": "type summary add -x \"std::chrono::time_point<std::chrono::system_clock,.*>\" --python-function lldb_printers.TimePoint_SummaryProvider",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Add TimePoint pretty printer for typedef TimePoint",
+                "text": "type summary add -x \"^TimePoint$\" --python-function lldb_printers.TimePoint_SummaryProvider",
+                "ignoreFailures": true
+            }
+        ]
     }
+    
     ]
 }

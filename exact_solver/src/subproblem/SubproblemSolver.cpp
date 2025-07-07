@@ -320,8 +320,7 @@ SubproblemSolver::groupFDPsByStartAirport(const std::vector<FDP>& fdps) const {
     return airport_groups;
 }
 
-FDPNetwork SubproblemSolver::buildFDPNetwork(
-    const std::string& crew_id, const std::vector<FDP>& valid_fdps) {
+FDPNetwork SubproblemSolver::buildFDPNetwork(const std::string& crew_id, const std::vector<FDP>& valid_fdps) {
     
     FDPNetwork network;
     

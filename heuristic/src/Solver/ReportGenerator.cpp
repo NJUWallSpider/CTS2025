@@ -149,7 +149,7 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
     auto end_time = std::chrono::steady_clock::now();
     auto runtime = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
     
-    std::ofstream out(output_path);
+    std::ofstream out(output_path+"/schedule_report.txt");
     if (!out) {
         std::cerr << "Error: Could not open file " << output_path << " for writing." << std::endl;
         return;
@@ -166,7 +166,11 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
     out << "Best Score:       " << solution.score << "\n\n";
 
     const auto& all_crews = data.getCrews();
-
+    auto layover_spots = data.getLayoverStations();
+    int NonLayover = 0;
+    int total_duty_periods = 0;
+    int NonBase_layover = 0;
+    int Invalid_layover = 0;
     for (const auto& [crew_id, duty_periods] : solution.crew_dutyperiods) {
         if (all_crews.find(crew_id) == all_crews.end()) continue;
         const auto& crew_data = all_crews.at(crew_id);
@@ -187,7 +191,15 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
                 << " | Flight Time: " << format_duration(duty_period.total_flight_time) << "\n";
             out << "  Start: " << format_time(duty_period.startTime) << "\n";
             out << "  End:   " << format_time(duty_period.endTime) << "\n\n";
-            
+            if(!duty_period.tasks.empty()){
+                out << "    Layover Airport:  " << get_arrival_airport(duty_period.tasks.back()) << "\n";
+                out << "    Layover Validity:  " << (get_arrival_airport(duty_period.tasks.back()) == crew_data.base || std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) != layover_spots.end() ? "Yes" : "No") << "\n";
+                NonLayover +=  std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) == layover_spots.end();
+                NonBase_layover += get_arrival_airport(duty_period.tasks.back()) != crew_data.base;
+                Invalid_layover += get_arrival_airport(duty_period.tasks.back()) != crew_data.base && std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) == layover_spots.end();
+
+            }
+            total_duty_periods++;
             auto sorted_tasks = duty_period.tasks;
             std::sort(sorted_tasks.begin(), sorted_tasks.end(), [](const auto& a, const auto& b){
                 return get_start_time(a) < get_start_time(b);
@@ -232,7 +244,12 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
 
         }
     }
-
+    std::ofstream out_layover_validity(output_path+"/layover_validity.txt");
+    out_layover_validity << "Total Duty Periods: " << total_duty_periods << "\n";
+    out_layover_validity << "Total Non-Layover: " << NonLayover << "\n";
+    out_layover_validity << "Total Non-Base Layover: " << NonBase_layover << "\n";
+    out_layover_validity << "Total Invalid Layover: " << Invalid_layover << "\n";
+    out_layover_validity << "Average Invalid Layover: " << (double)Invalid_layover / total_duty_periods << "\n";
     std::cout << "Schedule report generated at " << output_path << std::endl;
 }
 

@@ -24,7 +24,7 @@ void write_results(const std::string& airport, const Date& date, const std::vect
             out_file << fdp.to_string() << std::endl;
         }
         out_file << std::endl;
-        out_file.close(); // 虽然析构函数会自动关闭，但显式关闭是好习惯
+        out_file.close(); 
     } else {
         // 文件打开失败，向标准错误流报告问题
         std::cerr << "Error: Unable to open file for writing at /home/bhz/CTS-2025/Pair-and-Assign/FDP_result.txt" << std::endl;

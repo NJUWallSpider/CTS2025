@@ -23,9 +23,10 @@ int main(int argc, char** argv) {
         // }
 
         // 此处是所有使用到的数据路径
-        std::filesystem::path data_path = "/home/bhz/new-cts/data/0606";                 
-        std::string fdp_path = "/home/bhz/new-cts/fdp_networks"; // 储存FDP网络的文件夹路径
-        std::filesystem::path heuristic_path = "/home/bhz/new-cts/heuristic/report/rosterResult.csv"; // 储存启发式解的文件夹路径
+        std::string data_version = "0606";
+        std::filesystem::path data_path = std::filesystem::path("data") / data_version; 
+        std::string fdp_path = "exact_solver/fdp_networks/" + data_version; // 储存FDP网络的文件夹路径
+        std::filesystem::path heuristic_path = std::filesystem::path("heuristic") / "report" / data_version / "rosterResult.csv"; // 储存启发式解的文件夹路径
         Date start_date{std::chrono::year(2025)/std::chrono::May/std::chrono::day(29)};
         Date end_date{std::chrono::year(2025)/std::chrono::June/std::chrono::day(4)};
         
@@ -69,7 +70,7 @@ int main(int argc, char** argv) {
         
         // 创建主问题
         std::cout << "\n创建主问题..." << std::endl;
-        MasterProblem master(data);
+        MasterProblem master(data, data_version);
         master.initialize();
         
         // 创建子问题求解器
