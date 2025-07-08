@@ -120,6 +120,7 @@ private:
     const std::chrono::hours MIN_CONNECTION_GROUND_DUTY = std::chrono::hours(3);
     // for layover validity check
     const std::chrono::hours LAYOVER_THRESHOLD = std::chrono::hours(3);
+    // when a FDP can not be extended, the probability of adding a positioning task && when the latest DP is NDP, the probability of adding a positioning task
     const int PROBABILITY_ADD_POSITIONING = 40;
     const int PROBABILITY_REQUIRE_QUALIFICATION = 100;
     const std::chrono::hours MIN_LEFT_TIME_FOR_FDUTY = std::chrono::hours(2);

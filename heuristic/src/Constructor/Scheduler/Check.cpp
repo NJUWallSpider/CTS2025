@@ -90,48 +90,51 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
 
     //// If the Crew is on a EXTENDABLE FDuty ////
     if(lastest_duty_period.is_FDuty && lastest_duty_period.can_be_extended){
-        // check the connection time （3）
+
+        //1. start a new FDP
+        if(candidate_flight.std - lastest_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
+                return true;
+            }
+
+        
+        // 2. add to current FDP
+            // 2.1 check the FD max flight time （8）&& FD max task time （12）
+        if(lastest_duty_period.total_flight_time + std::chrono::minutes(candidate_flight.flyTime_mins) > MAX_FLY_TIME_PER_DUTY ||
+        candidate_flight.sta - lastest_duty_period.startTime > MAX_DUTY_TIME_PER_FLIGHT_DUTY){
+            // try to start a new FDP if the MAX_REST_TIME_BETWEEN_FDUTY is met
+
+            return false;
+        }
+
+            // 2.2 check the connection time （3）
         //// if the lastest task is a flight////
         if(std::holds_alternative<Flight>(lastest_duty_period.tasks.back())){
             // if the aircraft id of the candidate flight is not the same as the lastest task, then check the connection time (3)
             if(candidate_flight.aircraftNo != std::get<Flight>(lastest_duty_period.tasks.back()).aircraftNo){
                 // check the connection time (3)
                 if(get_start_time(candidate_flight) - last_task_end_time_ < MIN_CONNECTION_TIME_FLIGHT){
-                return false;
+                    return false;
                 }
             }
-        }
-        //// if the lastest task is a bus, the connection time is 2 hours ////
-        if(std::holds_alternative<Bus>(lastest_duty_period.tasks.back()) && get_start_time(candidate_flight) - last_task_end_time_ < MIN_CONNECTION_TIME_BUS){
-            return false;
-        }
-
-        // check the FD max flight time （8）&& FD max task time （12）
-        if(lastest_duty_period.total_flight_time + std::chrono::minutes(candidate_flight.flyTime_mins) > MAX_FLY_TIME_PER_DUTY ||
-        candidate_flight.sta - lastest_duty_period.startTime > MAX_DUTY_TIME_PER_FLIGHT_DUTY){
-            // try to start a new FDP if the MAX_REST_TIME_BETWEEN_FDUTY is met
-            if(candidate_flight.std - lastest_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
-                return true;
-            }
-            return false;
         }
 
         // check the layover validity (using a threshold)
         // TODO: return to base will be the best condition
-        std::vector<std::string> layover_spots = data_.getLayoverStations();
-        if(std::find(layover_spots.begin(), layover_spots.end(), candidate_flight.arriAirport) == layover_spots.end() || crew_.base != candidate_flight.arriAirport){
-            if(MAX_DUTY_TIME_PER_FLIGHT_DUTY - (candidate_flight.sta - lastest_duty_period.startTime) < LAYOVER_THRESHOLD){
-                return false;
-            }
-        }
+        // std::vector<std::string> layover_spots = data_.getLayoverStations();
+        // if(std::find(layover_spots.begin(), layover_spots.end(), candidate_flight.arriAirport) == layover_spots.end() || crew_.base != candidate_flight.arriAirport){
+        //     if(MAX_DUTY_TIME_PER_FLIGHT_DUTY - (candidate_flight.sta - lastest_duty_period.startTime) < LAYOVER_THRESHOLD){
+        //         return false;
+        //     }
+        // }
     }
     // If the lastest duty period is a FDuty but not extendable (bus positioning in the end of the FDuty)
     // suppose start a new FDuty which should consider the min rest time between two FDuty
     else if(lastest_duty_period.is_FDuty && !lastest_duty_period.can_be_extended){
         // try to start a new FDuty if the MIN_REST_BEFORE_FDUTY is met
-        if(candidate_flight.std - lastest_duty_period.endTime < MIN_REST_BEFORE_FDUTY){
+        if(candidate_flight.std - get_end_time(lastest_duty_period.tasks.back()) < MIN_REST_BEFORE_FDUTY){
             return false;
         }
+        return true;
 
     }
     // If the lastest duty period is a NFDuty
@@ -149,7 +152,8 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
                     return true;
                 }
             }
-            else{return false;  }
+            else{
+                return false;  }
 
         }
     }
@@ -164,30 +168,30 @@ bool CrewSchedule::Check_ddh_Bus_validity(const Bus& candidate_bus){
     }
     auto layover_spots = data_.getLayoverStations();
     // get the lastest duty period
-    const auto& lastest_duty_period = duty_periods_.back();
+    const auto& latest_duty_period = duty_periods_.back();
     // if the lastest duty period is a FDuty and extendable
-    if(lastest_duty_period.is_FDuty && lastest_duty_period.can_be_extended){
+    if(latest_duty_period.is_FDuty && latest_duty_period.can_be_extended){
 
         if(current_airport_ == crew_.base || (std::find(layover_spots.begin(), layover_spots.end(), current_airport_) != layover_spots.end() && std::find(layover_spots.begin(), layover_spots.end(), candidate_bus.arriAirport) == layover_spots.end())){
             return false;
         }
         
-        if(candidate_bus.td - lastest_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
+        if(candidate_bus.td - latest_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
             return true;
         }
-        else if(candidate_bus.td - lastest_duty_period.endTime >= MIN_CONNECTION_TIME_BUS){
+        else if(candidate_bus.td - latest_duty_period.endTime >= MIN_CONNECTION_TIME_BUS){
             // add the bus to the last duty period
             return true;
         }
         return false;
     }
-    else if(lastest_duty_period.is_FDuty && !lastest_duty_period.can_be_extended){
+    else if(latest_duty_period.is_FDuty && !latest_duty_period.can_be_extended){
         // start a new NFDP with a probability
-        if(!lastest_duty_period.tasks.empty()){
+        if(!latest_duty_period.tasks.empty()){
             std::random_device rd;
             std::mt19937 gen(rd());
             std::uniform_int_distribution<> dis(0, 99);
-            auto& last_task = lastest_duty_period.tasks.back();
+            auto& last_task = latest_duty_period.tasks.back();
             if(candidate_bus.td - get_end_time(last_task) >= MIN_REST_BEFORE_FDUTY){
                 if(dis(gen) < PROBABILITY_ADD_POSITIONING){
                     return true;
@@ -207,7 +211,7 @@ bool CrewSchedule::Check_ddh_Bus_validity(const Bus& candidate_bus){
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> dis(0, 99);
-        if(dis(gen) < PROBABILITY_ADD_POSITIONING - lastest_duty_period.taskCount * 10){
+        if(dis(gen) < PROBABILITY_ADD_POSITIONING - latest_duty_period.taskCount * 10){
             return true;
         }
     }

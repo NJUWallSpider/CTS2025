@@ -26,7 +26,7 @@ void Solver::run() {
     SolutionState current_solution = solution_constructor.generate_schedule();
     best_solution = current_solution;
     
-    std::string directory = "/home/bhz/new-cts/heuristic/report/";
+    std::string directory = "heuristic/report/" + data_version + "/";
     ReportGenerator::generate_schedule_report(best_solution, data_loader, directory + "schedule_report.txt", start_time);
     ReportGenerator::generate_submission_csv(best_solution, directory + "rosterResult.csv");
     ReportGenerator::validate_crew_flight_consistency(best_solution, directory + "crew_flight_consistency.txt");

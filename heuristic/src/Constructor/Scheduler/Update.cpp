@@ -69,7 +69,18 @@ void CrewSchedule::Update_DutyPeriod(){
     //(1) is a flight duty period, 
     //(2) the last task is not a bus(positioning)
     // [..., ..., BUS] means the FlightDutyPeriod is completed
-    duty_period.can_be_extended = (!(duty_period.is_FDuty && std::holds_alternative<Bus>(duty_period.tasks.back())));
+    if(duty_period.is_FDuty){
+        if(std::holds_alternative<Bus>(duty_period.tasks.back())){
+            duty_period.can_be_extended = false;
+        }
+        else if(std::holds_alternative<Flight>(duty_period.tasks.back())){
+            Flight last_flight = std::get<Flight>(duty_period.tasks.back());
+            // the last flight is a positioning task
+            if(std::find(crew_.qualifications.begin(), crew_.qualifications.end(), last_flight.id) == crew_.qualifications.end()){
+                duty_period.can_be_extended = false;
+            }
+        }
+    }
     // || (!(duty_period.is_FDuty && std::chrono::hours(2) + duty_period.total_flight_time > MAX_FLY_TIME_PER_DUTY))
     // || (!(duty_period.is_FDuty && std::chrono::hours(2) + duty_period.total_task_time > MAX_DUTY_TIME_PER_FLIGHT_DUTY));
 

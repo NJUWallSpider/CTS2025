@@ -1,5 +1,6 @@
 #include "SolutionConstruct.hpp"
 #include "Scheduler/CrewSchedule.hpp"
+#include "../Solver/ReportGenerator.hpp"
 #include <chrono>
 #include <iostream>
 #include <vector>
@@ -14,6 +15,7 @@
 #include <atomic>
 #include <future>
 #include <functional>
+#include <set>
 
 SolutionConstructor::SolutionConstructor(const DataLoader& data) : data_(data) {}
 
@@ -48,19 +50,19 @@ SolutionState SolutionConstructor::generate_schedule() {
     for(const auto& [_, crew] : crews) {
         double score = 0.0;
         
-        // Factor 1: Ground duties (30% weight)
-        if(max_ground_duties > 0) {
-            score += (crew.groundDuties.size() / max_ground_duties) * 0.6;
-        }
+        // // Factor 1: Ground duties (30% weight)
+        // if(max_ground_duties > 0) {
+        //     score += (crew.groundDuties.size() / max_ground_duties) * 0.6;
+        // }
         
         // Factor 2: Qualification flexibility (40% weight)
         if(max_quals > 0) {
-            score -= (crew.qualifications.size() / max_quals) * 0.3;
+            score -= (crew.qualifications.size() / max_quals) * 0.6;
         }
         
         // Factor 3: Base station strategic value (30% weight)
         if(max_base_flights > 0 && base_flight_counts.count(crew.base)) {
-            score += (base_flight_counts[crew.base] / max_base_flights) * 0.2;
+            score -= (base_flight_counts[crew.base] / max_base_flights) * 0.2;
         }
         
         crew_scores.emplace_back(crew, score);
@@ -171,12 +173,21 @@ std::vector<std::string> SolutionConstructor::select_crews_to_ruin(const Solutio
     // 计算要选择的机长数量
     int num_crews_to_select = std::max(1, static_cast<int>(all_crew_ids.size() * percentage));
     
-    // 随机打乱机长ID列表
-    std::shuffle(all_crew_ids.begin(), all_crew_ids.end(), rng_);
+    // 随机选择指定数量的机长
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, all_crew_ids.size() - 1);
     
-    // 选择前num_crews_to_select个机长
-    selected_crews.assign(all_crew_ids.begin(), all_crew_ids.begin() + num_crews_to_select);
+    // 使用set来避免重复选择
+    std::set<std::string> selected_set;
+    while (selected_set.size() < num_crews_to_select) {
+        int random_index = dis(gen);
+        selected_set.insert(all_crew_ids[random_index]);
+    }
     
+    // 将set转换为vector
+    selected_crews.assign(selected_set.begin(), selected_set.end());
+
     return selected_crews;
 }
 
@@ -340,6 +351,10 @@ void SolutionConstructor::thread_worker(
                                       << " 找到新的全局最优解，分数: " << global_best_solution.score 
                                       << ", 迭代: " << global_iteration_counter.load() 
                                       << ", 温度: " << temperature << std::endl;
+                                ReportGenerator::generate_schedule_report(global_best_solution, data_, "heuristic/report/schedule_report.txt", std::chrono::steady_clock::now());
+                                ReportGenerator::generate_submission_csv(global_best_solution, "heuristic/report/rosterResult.csv");
+                                ReportGenerator::validate_crew_flight_consistency(global_best_solution, "heuristic/report/crew_flight_consistency.txt");
+
                         }
                     }
                 }

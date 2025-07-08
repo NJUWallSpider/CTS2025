@@ -136,29 +136,6 @@ void CrewSchedule::action_add_ground_duty(const GroundDuty& ground_duty){
     }
 }
 
-void CrewSchedule::action_remove_last_task() {
-    // get the last Duty Period
-    DutyPeriod& last_duty_period = duty_periods_.back();
-
-    // remove the last task from the last duty period
-    last_duty_period.tasks.pop_back();
-
-    // if the last task is a flight
-    if (std::holds_alternative<Flight>(last_duty_period.tasks.back())) {
-        // remove the <current Crew_id, bool> from the piloted flights vector
-        auto& assignments = flight_assignments[std::get<Flight>(last_duty_period.tasks.back()).id];
-        // find the current Crew_id in the piloted flights vector
-        // crew_assignment: <Crew_id, bool>
-        for(auto& crew_assignment : assignments){
-            if(crew_assignment.first == crew_.id){
-                // remove the <current Crew_id, bool> from the piloted flights vector
-                assignments.erase(std::remove(assignments.begin(), assignments.end(), crew_assignment), assignments.end());
-                break;
-            }
-        }
-    }
-}
-
 void CrewSchedule::action_allocate_pilot(){
     // suppose the lastest task is a flight
     Flight& flight = std::get<Flight>(duty_periods_.back().tasks.back());
@@ -180,7 +157,7 @@ void CrewSchedule::action_allocate_pilot(){
         else if(crew_.qualifications.find(flight.id) != crew_.qualifications.end()){
             flight_assignments[flight.id].emplace_back(crew_.id, true);
         }
-        //if there's no a qualified crew piloted to this flight, and the crew is not qualified for this flight, then this crew is a DDH to the flight
+        //if there's no a qualified crew piloted to this flight, and the crew is not qualified for this flight, then this crew is also a DDH to the flight
         else{
             flight_assignments[flight.id].emplace_back(crew_.id, false);  
         }

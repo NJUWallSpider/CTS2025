@@ -149,7 +149,7 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
     auto end_time = std::chrono::steady_clock::now();
     auto runtime = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
     
-    std::ofstream out(output_path+"/schedule_report.txt");
+    std::ofstream out(output_path);
     if (!out) {
         std::cerr << "Error: Could not open file " << output_path << " for writing." << std::endl;
         return;
@@ -244,7 +244,8 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
 
         }
     }
-    std::ofstream out_layover_validity(output_path+"/layover_validity.txt");
+    std::string directory = output_path.substr(0, output_path.find_last_of("/\\") + 1);
+    std::ofstream out_layover_validity(directory + "layover_validity.txt");
     out_layover_validity << "Total Duty Periods: " << total_duty_periods << "\n";
     out_layover_validity << "Total Non-Layover: " << NonLayover << "\n";
     out_layover_validity << "Total Non-Base Layover: " << NonBase_layover << "\n";
