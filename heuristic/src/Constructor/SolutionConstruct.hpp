@@ -66,6 +66,7 @@ public:
 private:
     const DataLoader& data_; // Holds a const reference to the original data
     
+    
     // 破坏阶段：移除部分机长的排班
     void ruin_solution(SolutionState& solution, const std::vector<std::string>& selected_crews);
     

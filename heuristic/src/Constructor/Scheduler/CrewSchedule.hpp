@@ -6,6 +6,8 @@
 #include <string>
 #include <variant>
 #include <chrono>
+#include <limits>
+#include <unordered_set>
 
 struct SolutionState; // Forward Declaration
 
@@ -76,7 +78,8 @@ public:
     explicit CrewSchedule(const DataLoader& data, const Crew& crew, 
             std::vector<DutyPeriod>& crew_duty_periods, 
             std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments,
-            std::vector<Cycle>& cycles);
+            std::vector<Cycle>& cycles,
+            std::string start_str);
 
     // 核心构造流程
     void assign_tasks_to_crew();
@@ -89,7 +92,10 @@ private:
     const Crew& crew_;
     std::vector<DutyPeriod>& duty_periods_; // List of duty periods for rule checking
     std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments;
+    
     std::vector<Cycle>& cycles_; // List of cycles for rule checking
+    /////
+    std::string start_str_;
 
 
     
@@ -100,6 +106,7 @@ private:
     // --- Member Variables ---
     std::string current_airport_;
     TimePoint last_task_end_time_;
+    std::unordered_set<std::string> all_bases_;
     
     // --- Rule Constants ---
     // duty period level
@@ -121,7 +128,7 @@ private:
     // for layover validity check
     const std::chrono::hours LAYOVER_THRESHOLD = std::chrono::hours(3);
     // when a FDP can not be extended, the probability of adding a positioning task && when the latest DP is NDP, the probability of adding a positioning task
-    const int PROBABILITY_ADD_POSITIONING = 40;
+    const int PROBABILITY_ADD_POSITIONING = 100;
     const int PROBABILITY_REQUIRE_QUALIFICATION = 100;
     const std::chrono::hours MIN_LEFT_TIME_FOR_FDUTY = std::chrono::hours(2);
     //

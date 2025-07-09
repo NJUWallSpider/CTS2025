@@ -6113,6 +6113,8 @@ CMakeFiles/Heuristic.dir/Constructor/SolutionConstruct.cpp.o: /Users/tangmoxin/�
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stddef.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdint.h \
   /Users/tangmoxin/比赛/new-cts/heuristic/src/Loader/LoadData.hpp \
+  /Users/tangmoxin/比赛/new-cts/heuristic/src/Constructor/SolutionState.hpp \
+  /Users/tangmoxin/比赛/new-cts/heuristic/src/Solver/ReportGenerator.hpp \
   /Users/tangmoxin/比赛/new-cts/heuristic/src/Loader/LoadData.hpp \
   /Users/tangmoxin/比赛/new-cts/heuristic/src/Constructor/Scheduler/CrewSchedule.hpp \
   /Users/tangmoxin/比赛/new-cts/heuristic/src/Constructor/SolutionState.hpp \
@@ -10104,8 +10106,6 @@ CMakeFiles/Heuristic.dir/main.cpp.o: /Users/tangmoxin/比赛/new-cts/heuristic/s
 
 /Users/tangmoxin/比赛/new-cts/heuristic/src/Solver/Solver.cpp:
 
-/Users/tangmoxin/比赛/new-cts/heuristic/src/Solver/ReportGenerator.hpp:
-
 /Users/tangmoxin/比赛/new-cts/heuristic/src/Solver/ReportGenerator.cpp:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk/usr/include/c++/v1/condition_variable:
@@ -10117,6 +10117,8 @@ CMakeFiles/Heuristic.dir/main.cpp.o: /Users/tangmoxin/比赛/new-cts/heuristic/s
 /Users/tangmoxin/比赛/new-cts/heuristic/src/Loader/LoadData.cpp:
 
 /Users/tangmoxin/比赛/new-cts/heuristic/src/Constructor/SolutionConstruct.hpp:
+
+/Users/tangmoxin/比赛/new-cts/heuristic/src/Solver/ReportGenerator.hpp:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk/usr/include/c++/v1/thread:
 

@@ -91,6 +91,11 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
     //// If the Crew is on a EXTENDABLE FDuty ////
     if(lastest_duty_period.is_FDuty && lastest_duty_period.can_be_extended){
 
+        // // if the layover time is too long, go for a bus positioning
+        // if(candidate_flight.std - lastest_duty_period.endTime > std::chrono::hours(15)){
+        //     return false;
+        // }
+
         //1. start a new FDP
         if(candidate_flight.std - lastest_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
                 return true;
@@ -112,6 +117,7 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
             // if the aircraft id of the candidate flight is not the same as the lastest task, then check the connection time (3)
             if(candidate_flight.aircraftNo != std::get<Flight>(lastest_duty_period.tasks.back()).aircraftNo){
                 // check the connection time (3)
+                // return false;
                 if(get_start_time(candidate_flight) - last_task_end_time_ < MIN_CONNECTION_TIME_FLIGHT){
                     return false;
                 }
@@ -172,9 +178,9 @@ bool CrewSchedule::Check_ddh_Bus_validity(const Bus& candidate_bus){
     // if the lastest duty period is a FDuty and extendable
     if(latest_duty_period.is_FDuty && latest_duty_period.can_be_extended){
 
-        if(current_airport_ == crew_.base || (std::find(layover_spots.begin(), layover_spots.end(), current_airport_) != layover_spots.end() && std::find(layover_spots.begin(), layover_spots.end(), candidate_bus.arriAirport) == layover_spots.end())){
-            return false;
-        }
+        // if(current_airport_ == crew_.base || (std::find(layover_spots.begin(), layover_spots.end(), current_airport_) != layover_spots.end() && std::find(layover_spots.begin(), layover_spots.end(), candidate_bus.arriAirport) == layover_spots.end())){
+        //     return false;
+        // }
         
         if(candidate_bus.td - latest_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
             return true;

@@ -131,6 +131,7 @@ void DataLoader::_link_crew_qualifications(const std::filesystem::path& file_pat
     io::CSVReader<2> in(file_path.string());
     in.read_header(io::ignore_extra_column, "crewId", "legId");
     
+    
     std::string crewId, legId;
     while(in.read_row(crewId, legId)) {
         if(file_path.string() == "data/0606/crewLegMatch.csv") {
@@ -141,6 +142,11 @@ void DataLoader::_link_crew_qualifications(const std::filesystem::path& file_pat
         auto it = crews_.find(crewId);
         if (it != crews_.end()) {
             it->second.qualifications.insert(legId);
+            
+
         }
+        flight_to_crews_[legId].push_back(crewId);
+
+        
     }
 }

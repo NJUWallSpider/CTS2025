@@ -60,10 +60,10 @@ SolutionState SolutionConstructor::generate_schedule() {
             score -= (crew.qualifications.size() / max_quals) * 0.6;
         }
         
-        // Factor 3: Base station strategic value (30% weight)
-        if(max_base_flights > 0 && base_flight_counts.count(crew.base)) {
-            score -= (base_flight_counts[crew.base] / max_base_flights) * 0.2;
-        }
+        // // Factor 3: Base station strategic value (30% weight)
+        // if(max_base_flights > 0 && base_flight_counts.count(crew.base)) {
+        //     score -= (base_flight_counts[crew.base] / max_base_flights) * 0.2;
+        // }
         
         crew_scores.emplace_back(crew, score);
     }
@@ -73,32 +73,55 @@ SolutionState SolutionConstructor::generate_schedule() {
         [](const auto& a, const auto& b) {
             return a.second > b.second;
         });
-    
-    // Extract sorted crews
+
+    // Extract crews
     std::vector<Crew> weight_quali_base_sorted_crews;
     for(const auto& [crew, _] : crew_scores) {
         weight_quali_base_sorted_crews.push_back(crew);
     }
 
+    /////////////////////
+
     // // shuffle option
     // std::random_device rd;
     // std::mt19937 g(rd());
-    // std::shuffle(sorted_crews.begin(), sorted_crews.end(), g);
+    // std::shuffle(sorted_crews.begin(), sorted_crews.end(), g); 
+
+    /////////////////////
 
     // for the second phase:
     std::vector<Crew> crews_with_no_ground_duties;
     for(const auto& crew : weight_quali_base_sorted_crews){
         // get the crews that has no ground duties
-        if(crew.groundDuties.empty()){
+        if(crew.groundDuties.size() < 1){
             crews_with_no_ground_duties.emplace_back(crew);            
         }
     }
-    
+
+    //////////////////////
+
+    ////// for 0703 data: ////////
+    std::vector<Crew> crews_possess_qualifications;
     for(const auto& crew : crews_with_no_ground_duties){
+        if(!crew.qualifications.empty()){
+            crews_possess_qualifications.emplace_back(crew);
+        }
+    }
+    
+
+    std::string start_str ;
+    if(crews.size() == 725){
+        start_str = "2024/12/30 00:00";
+    }
+    else{
+        start_str = "2025/4/29 00:00";
+    }
+    for(const auto& crew : crews_possess_qualifications){
         CrewSchedule crew_schedule_builder(data_, crew, 
         solution.crew_dutyperiods[crew.id], 
         solution.flight_assignments,
-        solution.crew_cycles[crew.id]);
+        solution.crew_cycles[crew.id],
+        start_str);
 
         crew_schedule_builder.construct_schedule_DFS();
 
@@ -229,6 +252,13 @@ void SolutionConstructor::ruin_solution(SolutionState& solution, const std::vect
 void SolutionConstructor::recreate_solution(SolutionState& solution, const std::vector<std::string>& selected_crews) {
     const auto& crews = data_.getCrews();
     
+    std::string start_str ;
+    if(crews.size() == 725){
+        start_str = "2024/12/30 00:00";
+    }
+    else{
+        start_str = "2025/4/29 00:00";
+    }
     // 对于每个选中的机长
     for (const auto& crew_id : selected_crews) {
         // 确保机长存在于数据中
@@ -239,7 +269,8 @@ void SolutionConstructor::recreate_solution(SolutionState& solution, const std::
             CrewSchedule crew_schedule_builder(data_, crew, 
                 solution.crew_dutyperiods[crew_id], 
                 solution.flight_assignments,
-                solution.crew_cycles[crew_id]);
+                solution.crew_cycles[crew_id],
+                start_str);
             
             // 为该机长构建新的调度
             crew_schedule_builder.construct_schedule_DFS();

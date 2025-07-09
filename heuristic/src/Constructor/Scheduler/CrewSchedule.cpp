@@ -14,8 +14,13 @@
 
 
 CrewSchedule::CrewSchedule(const DataLoader& data, const Crew& crew, std::vector<DutyPeriod>& crew_duty_periods, std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments,
-std::vector<Cycle>& cycles)
-    : data_(data), crew_(crew), duty_periods_(crew_duty_periods), flight_assignments(flight_assignments), cycles_(cycles) {
+std::vector<Cycle>& cycles, std::string start_str)
+    : data_(data), crew_(crew), duty_periods_(crew_duty_periods), flight_assignments(flight_assignments), cycles_(cycles), start_str_(start_str) {
+    
+    for (const auto& [_, crew_data] : data.getCrews()) {
+        all_bases_.insert(crew_data.base);
+    }
+
     initialize_crew_state();
 }
 
@@ -29,11 +34,12 @@ void CrewSchedule::construct_schedule_DFS() {
     int flight_count = 0;
     int bus_count = 0;
     for (const auto& flight : data_.getFlights()) {
-        if (flight.depaAirport == current_airport_ && flight.std >= last_task_end_time_) {
+        if (flight.depaAirport == current_airport_ && flight.std >= last_task_end_time_ ) {
             candidates.emplace_back(flight);
             flight_count++;
         }
     }
+
     for (const auto& bus : data_.getBuses()) {
         if (bus.depaAirport == current_airport_ && bus.td >= last_task_end_time_) {
             candidates.emplace_back(bus);
@@ -49,125 +55,80 @@ void CrewSchedule::construct_schedule_DFS() {
 
     std::vector<std::string> layover_spots = data_.getLayoverStations();
 
+
     // Sort candidates based on the new rules
     std::sort(candidates.begin(), candidates.end(), [&](const auto& a, const auto& b) {
-        // bool a_is_qualified_flight = false;
-        // if (std::holds_alternative<Flight>(a)) {
-        //     const auto& flight_a = std::get<Flight>(a);
-        //     if (std::find(crew_.qualifications.begin(), crew_.qualifications.end(), flight_a.id) != crew_.qualifications.end()) {
-        //         a_is_qualified_flight = true;
-        //     }
-        // }
+        
 
-        // bool b_is_qualified_flight = false;
-        // if (std::holds_alternative<Flight>(b)) {
-        //     const auto& flight_b = std::get<Flight>(b);
-        //     if (std::find(crew_.qualifications.begin(), crew_.qualifications.end(), flight_b.id) != crew_.qualifications.end()) {
-        //         b_is_qualified_flight = true;
-        //     }
-        // }
+  
+            bool a_is_flight = std::holds_alternative<Flight>(a);
+            bool b_is_flight = std::holds_alternative<Flight>(b);
+            if (a_is_flight != b_is_flight) return a_is_flight;
 
-        // if (a_is_qualified_flight != b_is_qualified_flight) {
-        //     return a_is_qualified_flight;
-        // }
-        bool a_is_flight = std::holds_alternative<Flight>(a);
-        bool b_is_flight = std::holds_alternative<Flight>(b);
-        if (a_is_flight != b_is_flight) return a_is_flight;
+            bool a_is_bus = std::holds_alternative<Bus>(a);
+            bool b_is_bus = std::holds_alternative<Bus>(b);
 
+            if (a_is_bus && !b_is_bus) return true;  // a (bus) comes before b (flight)
+            if (!a_is_bus && b_is_bus) return false; // b (bus) comes before a (flight)
 
-        // bool find_pos_condition = !duty_periods_.empty() && duty_periods_.back().is_FDuty && !duty_periods_.back().can_be_extended;
-        // if (find_pos_condition) {
-        //     std::string arri_a = get_arrival_airport(a);
-        //     std::string arri_b = get_arrival_airport(b);
-
-        //     bool a_arrives_at_base = (arri_a == crew_.base);
-        //     bool b_arrives_at_base = (arri_b == crew_.base);
-        //     if (a_arrives_at_base != b_arrives_at_base) {
-        //         return a_arrives_at_base;
-        //     }
-
-        //     bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), arri_a) != layover_spots.end();
-        //     bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), arri_b) != layover_spots.end();
-        //     if (a_is_layover != b_is_layover) {
-        //         return a_is_layover;
-        //     }
-
-
-        // }
-
-        bool a_is_bus = std::holds_alternative<Bus>(a);
-        bool b_is_bus = std::holds_alternative<Bus>(b);
-        if (a_is_bus != b_is_bus) return a_is_bus;
-
+            if (a_is_bus && b_is_bus) {
+                const auto& bus_a = std::get<Bus>(a);
+                const auto& bus_b = std::get<Bus>(b);
+                bool a_to_hub = all_bases_.count(bus_a.arriAirport) > 0;
+                bool b_to_hub = all_bases_.count(bus_b.arriAirport) > 0;
+                if (a_to_hub != b_to_hub) {
+                    return a_to_hub; // Prioritize hub destination
+                }
+            }
+    
+        
         return get_start_time(a) < get_start_time(b);
     });
 
-    // if(!duty_periods_.empty() && duty_periods_.back().is_FDuty && !duty_periods_.back().can_be_extended){
-    //     std::sort(candidates.begin(), candidates.end(), [&](const auto& a, const auto& b) {
-           
 
-    //             std::string arri_a = get_arrival_airport(a);
-    //             std::string arri_b = get_arrival_airport(b);
 
-    //             bool a_arrives_at_base = (arri_a == crew_.base);
-    //             bool b_arrives_at_base = (arri_b == crew_.base);
-    //             if (a_arrives_at_base != b_arrives_at_base) {
-    //                 return a_arrives_at_base;
-    //             }
 
-    //             bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), arri_a) != layover_spots.end();
-    //             bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), arri_b) != layover_spots.end();
-    //             if (a_is_layover != b_is_layover) {
-    //                 return a_is_layover;
-    //             }
 
-            
 
-    //         return get_start_time(a) < get_start_time(b);
+    //     // 1. Check if last duty period is FDP and cannot be extended
+    // if (!duty_periods_.empty() && duty_periods_.back().is_FDuty && !duty_periods_.back().can_be_extended) {
+    //     // 2. Extract buses from candidates
+    //     std::vector<Bus> candidate_poses;
+    //     for (const auto& candidate : candidates) {
+    //         if (std::holds_alternative<Bus>(candidate)) {
+    //             candidate_poses.push_back(std::get<Bus>(candidate));
+    //         }
+    //     }
 
+    //     // 3. Sort buses according to the rules
+    //     std::sort(candidate_poses.begin(), candidate_poses.end(), [&](const Bus& a, const Bus& b) {
+    //         // Priority 1: Arrival airport is crew base
+    //         if (a.arriAirport == crew_.base && b.arriAirport != crew_.base) return true;
+    //         if (a.arriAirport != crew_.base && b.arriAirport == crew_.base) return false;
+
+    //         // Priority 2: Arrival airport is in layover stations
+    //         bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), a.arriAirport) != layover_spots.end();
+    //         bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), b.arriAirport) != layover_spots.end();
+    //         if (a_is_layover && !b_is_layover) return true;
+    //         if (!a_is_layover && b_is_layover) return false;
+
+    //         // Priority 3: Chronological by departure time
+    //         return a.td < b.td;
     //     });
+
+    //     // 4. Replace the bus candidates in the original candidates vector
+    //     // Remove all buses from candidates
+    //     candidates.erase(
+    //         std::remove_if(candidates.begin(), candidates.end(),
+    //             [](const auto& c) { return std::holds_alternative<Bus>(c); }),
+    //         candidates.end()
+    //     );
+    //     // Insert sorted buses after flights (or at the appropriate position)
+    //     // Find the position after the last flight
+    //     auto insert_pos = std::find_if(candidates.begin(), candidates.end(),
+    //         [](const auto& c) { return !std::holds_alternative<Flight>(c); });
+    //     candidates.insert(insert_pos, candidate_poses.begin(), candidate_poses.end());
     // }
-
-
-        // 1. Check if last duty period is FDP and cannot be extended
-    if (!duty_periods_.empty() && duty_periods_.back().is_FDuty && !duty_periods_.back().can_be_extended) {
-        // 2. Extract buses from candidates
-        std::vector<Bus> candidate_poses;
-        for (const auto& candidate : candidates) {
-            if (std::holds_alternative<Bus>(candidate)) {
-                candidate_poses.push_back(std::get<Bus>(candidate));
-            }
-        }
-
-        // 3. Sort buses according to the rules
-        std::sort(candidate_poses.begin(), candidate_poses.end(), [&](const Bus& a, const Bus& b) {
-            // Priority 1: Arrival airport is crew base
-            if (a.arriAirport == crew_.base && b.arriAirport != crew_.base) return true;
-            if (a.arriAirport != crew_.base && b.arriAirport == crew_.base) return false;
-
-            // Priority 2: Arrival airport is in layover stations
-            bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), a.arriAirport) != layover_spots.end();
-            bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), b.arriAirport) != layover_spots.end();
-            if (a_is_layover && !b_is_layover) return true;
-            if (!a_is_layover && b_is_layover) return false;
-
-            // Priority 3: Chronological by departure time
-            return a.td < b.td;
-        });
-
-        // 4. Replace the bus candidates in the original candidates vector
-        // Remove all buses from candidates
-        candidates.erase(
-            std::remove_if(candidates.begin(), candidates.end(),
-                [](const auto& c) { return std::holds_alternative<Bus>(c); }),
-            candidates.end()
-        );
-        // Insert sorted buses after flights (or at the appropriate position)
-        // Find the position after the last flight
-        auto insert_pos = std::find_if(candidates.begin(), candidates.end(),
-            [](const auto& c) { return !std::holds_alternative<Flight>(c); });
-        candidates.insert(insert_pos, candidate_poses.begin(), candidate_poses.end());
-    }
 
 
 

@@ -27,6 +27,8 @@ struct SolutionState {
     // Maps flight ID to assignment info - vector of pairs (crew ID, whether crew is qualified)
     std::map<std::string, std::vector<std::pair<std::string, bool>>> flight_assignments;
 
+
+
     // The overall score of this solution. Higher is better.
     double score = 0.0;
 
