@@ -983,12 +983,14 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
     
     // 获取所有需要处理的机组ID
     std::vector<std::string> all_crew_ids;
-    for (const auto& [crew_id, crew] : data_.get_all_crews()) {
-        std::string file_path = getNetworkFilePath(crew_id);
-        if (fs::exists(file_path)) {
-            continue;
+    {
+        for (const auto& [crew_id, crew] : data_.get_all_crews()) {
+            std::string file_path = getNetworkFilePath(crew_id);
+            if (fs::exists(file_path)) {
+                continue;
+            }
+            all_crew_ids.push_back(crew_id);
         }
-        all_crew_ids.push_back(crew_id);
     }
     
     // 创建网络存储目录
@@ -1003,7 +1005,7 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
     
     size_t total_count = all_crew_ids.size();
     std::atomic<size_t> processed_count(0);
-    std::mutex cout_mutex; // 用于保护输出操作
+    std::mutex cout_mutex;
     
     // 创建任务队列
     std::mutex queue_mutex;
@@ -1013,36 +1015,42 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
     std::vector<std::thread> threads;
     
     auto worker_function = [&]() {
+        // 为每个线程创建一个独立的SubproblemSolver实例
+        SubproblemSolver local_solver(data_, master_, network_directory_, 
+                non_base_rejection_prob_, beam_width_);
+                
         while (true) {
             // 获取下一个要处理的机组ID
             std::string crew_id;
             {
                 std::lock_guard<std::mutex> lock(queue_mutex);
                 if (next_index >= all_crew_ids.size()) {
-                    break; // 所有任务已分配完毕
+                    break;
                 }
                 crew_id = all_crew_ids[next_index++];
             }
 
-            // 每个线程创建自己的SubproblemSolver实例，避免共享缓存
-            SubproblemSolver local_solver(data_, master_, network_directory_, 
-                non_base_rejection_prob_, beam_width_);
-            
             try {
-                // 过滤有效的FDP - 使用本地实例避免缓存冲突
+                // 过滤有效的FDP
                 std::vector<FDP> valid_fdps = local_solver.filterValidFDPs(crew_id);
                 
                 if (!valid_fdps.empty()) {
-                    // 构建网络 - 使用本地实例避免缓存冲突
+                    // 构建网络
                     FDPNetwork network = local_solver.buildFDPNetwork(crew_id, valid_fdps);
                     
-                    // 保存到文件 - 每个线程写入不同的文件，避免IO冲突
+                    // 保存到文件
                     std::string file_path = getNetworkFilePath(crew_id);
-                    
-                    // 使用临时文件路径
                     std::string temp_file_path = file_path + ".tmp";
 
-                    // local_solver.serializeFDPNetwork(crew_id, network, file_path);
+                    // 使用RAII确保临时文件被清理
+                    struct TempFileGuard {
+                        std::string path;
+                        ~TempFileGuard() {
+                            if (fs::exists(path)) {
+                                fs::remove(path);
+                            }
+                        }
+                    } temp_file_guard{temp_file_path};
                     
                     // 尝试最多3次序列化和验证
                     bool success = false;
@@ -1053,23 +1061,20 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
                             continue;
                         }
                         
-                        // 验证临时文件
                         FDPNetwork test_network;
                         if (!local_solver.deserializeFDPNetwork(crew_id, temp_file_path, test_network)) {
-                            fs::remove(temp_file_path);
                             std::this_thread::sleep_for(std::chrono::milliseconds(100));
                             continue;
                         }
                         
-                        // 比较原始网络和反序列化网络
                         if (local_solver.compareNetworks(network, test_network)) {
-                            // 验证成功，将临时文件重命名为最终文件
                             try {
                                 if (fs::exists(file_path)) {
                                     fs::remove(file_path);
                                 }
                                 fs::rename(temp_file_path, file_path);
                                 success = true;
+                                break;
                             } catch (const std::exception& e) {
                                 std::lock_guard<std::mutex> lock(cout_mutex);
                                 std::cerr << "重命名文件失败: " << e.what() << std::endl;
@@ -1078,10 +1083,14 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
                     }
                 }
                 
-                // 关键：无论当前机组是否有有效FDP，处理完后都必须清理本地缓存
+                // 清理本地缓存
                 local_solver.clearCache();
                 
-                // 更新进度并输出
+                // 清理可能的大对象
+                valid_fdps.clear();
+                valid_fdps.shrink_to_fit();
+                
+                // 更新进度
                 size_t current = ++processed_count;
                 {
                     std::lock_guard<std::mutex> lock(cout_mutex);
@@ -1093,8 +1102,13 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
             } catch (const std::exception& e) {
                 std::lock_guard<std::mutex> lock(cout_mutex);
                 std::cerr << "处理机组 " << crew_id << " 时发生错误: " << e.what() << std::endl;
+                // 确保发生异常时也清理缓存
+                local_solver.clearCache();
             }
         }
+        
+        // 线程结束前确保清理
+        local_solver.clearCache();
     };
     
     // 启动工作线程

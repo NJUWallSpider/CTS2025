@@ -23,13 +23,13 @@ int main(int argc, char** argv) {
         // }
 
         // 此处是所有使用到的数据路径
-        std::string data_version = "0606";
+        std::string data_version = "0703";
         std::filesystem::path data_path = std::filesystem::path("data") / data_version; 
         std::string fdp_path = "exact_solver/fdp_networks/" + data_version; // 储存FDP网络的文件夹路径
         // std::filesystem::path heuristic_path = std::filesystem::path("heuristic") / "report" / data_version / "rosterResult.csv"; // 储存启发式解的文件夹路径
-        std::filesystem::path heuristic_path = std::filesystem::path("/home/bhz/new-cts/empty_submission.csv");
-        Date start_date{std::chrono::year(2025)/std::chrono::May/std::chrono::day(29)};
-        Date end_date{std::chrono::year(2025)/std::chrono::June/std::chrono::day(4)};
+        std::filesystem::path heuristic_path = std::filesystem::path("/home/ubuntu/new-cts/empty_submission.csv");
+        Date start_date{std::chrono::year(2025)/std::chrono::January/std::chrono::day(1)};
+        Date end_date{std::chrono::year(2025)/std::chrono::January/std::chrono::day(7)};
         
         // 设置非基地机场结束的FDP被拒绝的概率
         double non_base_rejection_prob = 0; 
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
 
         const int MAX_ITERATIONS = 280; // 设置最大迭代次数
 
-        const int NUM_THREADS = 16;  // 设置线程数
+        const int NUM_THREADS = 32;  // 设置线程数
 
         // 加载调度数据
         std::cout << "正在加载数据..." << std::endl;
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
         // 预处理所有机组的FDP网络
         std::cout << "\n预处理所有机组的FDP网络..." << std::endl;
         auto start_precompute = std::chrono::steady_clock::now();
-        subproblem.precomputeAllFDPNetworks();
+        subproblem.precomputeAllFDPNetworksParallel(NUM_THREADS);
         auto end_precompute = std::chrono::steady_clock::now();
         auto precompute_time = std::chrono::duration_cast<std::chrono::seconds>(end_precompute - start_precompute).count();
         std::cout << "FDP网络预处理完成，耗时: " << precompute_time << " 秒" << std::endl;
