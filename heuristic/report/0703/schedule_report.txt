@@ -1,7 +1,7 @@
 ==================================================
            CREW SCHEDULE REPORT
 ==================================================
-Report Generated: 2025-07-09 21:17:35
+Report Generated: 2025-07-09 21:20:48
 Total Runtime:    4 seconds
 
 Best Score:       2031
@@ -976,8 +976,8 @@ Base:    XALQ
     Layover Airport:  JTZV
     Layover Validity:  Yes
     [2025-01-07 16:30 - 2025-01-07 19:55] Bus ddh_11617	(LCYY -> JTZV)
-    [2025-01-07 20:24 - 2025-01-07 21:27] Bus ddh_12735	(JTZV -> XALQ)
-    [2025-01-07 23:00 - 2025-01-07 23:59] Bus ddh_11988	(XALQ -> JTZV)
+    [2025-01-07 19:55 - 2025-01-07 21:30] Bus ddh_12132	(JTZV -> IGVH)
+    [2025-01-07 23:05 - 2025-01-07 23:59] Bus ddh_12375	(IGVH -> JTZV)
 
   === Cycle 1 ===
   Duration: 68h 0m
@@ -3657,21 +3657,17 @@ Base:    IGVH
   Location: WDWO
 
   === Duty Period 5 ===
-  Duration: 35h 40m | Tasks: 9 | Flights: 0 | Flight Time: 0h 0m
+  Duration: 14h 27m | Tasks: 5 | Flights: 0 | Flight Time: 0h 0m
   Start: 2025-01-06 06:38
-  End:   2025-01-07 18:18
+  End:   2025-01-06 21:05
 
-    Layover Airport:  WDWO
+    Layover Airport:  YELV
     Layover Validity:  Yes
     [2025-01-06 06:38 - 2025-01-06 10:40] Bus ddh_12779	(WDWO -> JTZV)
     [2025-01-06 10:53 - 2025-01-06 13:02] Bus ddh_11879	(JTZV -> XALQ)
-    [2025-01-06 13:03 - 2025-01-06 15:02] Bus ddh_12194	(XALQ -> JTZV)
-    [2025-01-06 15:05 - 2025-01-06 17:30] Bus ddh_11554	(JTZV -> ZOEV)
-    [2025-01-06 18:40 - 2025-01-06 21:25] Bus ddh_11565	(ZOEV -> JTZV)
-    [2025-01-06 22:06 - 2025-01-06 23:41] Bus ddh_13184	(JTZV -> XALQ)
-    [2025-01-07 06:55 - 2025-01-07 09:10] Bus ddh_11591	(XALQ -> ZFTY)
-    [2025-01-07 10:00 - 2025-01-07 14:00] Bus ddh_13329	(ZFTY -> JTZV)
-    [2025-01-07 15:00 - 2025-01-07 18:18] Bus ddh_11736	(JTZV -> WDWO)
+    [2025-01-06 14:14 - 2025-01-06 16:10] Bus ddh_12581	(XALQ -> JTZV)
+    [2025-01-06 16:30 - 2025-01-06 19:00] Bus ddh_11559	(JTZV -> ZFTY)
+    [2025-01-06 19:05 - 2025-01-06 21:05] Bus ddh_13157	(ZFTY -> YELV)
 
   === Cycle 1 ===
   Duration: 76h 30m
@@ -3881,15 +3877,14 @@ Base:    XALQ
   Location: LCYY
 
   === Duty Period 4 ===
-  Duration: 7h 29m | Tasks: 3 | Flights: 0 | Flight Time: 0h 0m
+  Duration: 6h 5m | Tasks: 2 | Flights: 0 | Flight Time: 0h 0m
   Start: 2025-01-07 16:30
-  End:   2025-01-07 23:59
+  End:   2025-01-07 22:35
 
-    Layover Airport:  JTZV
+    Layover Airport:  ZOEV
     Layover Validity:  Yes
     [2025-01-07 16:30 - 2025-01-07 19:55] Bus ddh_11617	(LCYY -> JTZV)
-    [2025-01-07 19:55 - 2025-01-07 21:30] Bus ddh_12132	(JTZV -> IGVH)
-    [2025-01-07 23:05 - 2025-01-07 23:59] Bus ddh_12375	(IGVH -> JTZV)
+    [2025-01-07 20:15 - 2025-01-07 22:35] Bus ddh_11624	(JTZV -> ZOEV)
 
   === Cycle 1 ===
   Duration: 65h 35m
@@ -4375,27 +4370,20 @@ Base:    IGVH
   Location: PNOJ
 
   === Duty Period 5 ===
-  Duration: 4h 51m | Tasks: 2 | Flights: 0 | Flight Time: 0h 0m
+  Duration: 33h 36m | Tasks: 8 | Flights: 0 | Flight Time: 0h 0m
   Start: 2025-01-06 11:09
-  End:   2025-01-06 16:00
+  End:   2025-01-07 20:45
 
-    Layover Airport:  UNUN
+    Layover Airport:  JTZV
     Layover Validity:  Yes
     [2025-01-06 11:09 - 2025-01-06 11:59] Bus ddh_13031	(PNOJ -> XALQ)
     [2025-01-06 12:00 - 2025-01-06 16:00] Bus ddh_11546	(XALQ -> UNUN)
-
-  --- Rest Period ---
-  Duration: 25h 50m
-  Location: UNUN
-
-  === Duty Period 6 ===
-  Duration: 4h 5m | Tasks: 1 | Flights: 0 | Flight Time: 0h 0m
-  Start: 2025-01-07 17:50
-  End:   2025-01-07 21:55
-
-    Layover Airport:  XALQ
-    Layover Validity:  Yes
-    [2025-01-07 17:50 - 2025-01-07 21:55] Bus ddh_11618	(UNUN -> XALQ)
+    [2025-01-06 17:50 - 2025-01-06 21:55] Bus ddh_11561	(UNUN -> XALQ)
+    [2025-01-06 23:00 - 2025-01-06 23:59] Bus ddh_11987	(XALQ -> JTZV)
+    [2025-01-07 07:51 - 2025-01-07 09:50] Bus ddh_13005	(JTZV -> XALQ)
+    [2025-01-07 11:25 - 2025-01-07 14:16] Bus ddh_12357	(XALQ -> JTZV)
+    [2025-01-07 14:43 - 2025-01-07 17:34] Bus ddh_12519	(JTZV -> XALQ)
+    [2025-01-07 18:50 - 2025-01-07 20:45] Bus ddh_12303	(XALQ -> JTZV)
 
   === Cycle 1 ===
   Duration: 84h 50m
@@ -8339,18 +8327,19 @@ Base:    XALQ
   Location: ZFTY
 
   === Duty Period 5 ===
-  Duration: 25h 8m | Tasks: 6 | Flights: 0 | Flight Time: 0h 0m
+  Duration: 24h 41m | Tasks: 7 | Flights: 0 | Flight Time: 0h 0m
   Start: 2025-01-06 21:55
-  End:   2025-01-07 23:03
+  End:   2025-01-07 22:36
 
     Layover Airport:  WDWO
     Layover Validity:  Yes
     [2025-01-06 21:55 - 2025-01-07 01:55] Bus ddh_11572	(ZFTY -> ZOEV)
-    [2025-01-07 07:40 - 2025-01-07 10:35] Bus ddh_11593	(ZOEV -> XALQ)
-    [2025-01-07 10:52 - 2025-01-07 12:50] Bus ddh_12249	(XALQ -> JTZV)
-    [2025-01-07 13:00 - 2025-01-07 15:40] Bus ddh_12465	(JTZV -> XALQ)
-    [2025-01-07 16:56 - 2025-01-07 19:16] Bus ddh_13113	(XALQ -> JTZV)
-    [2025-01-07 19:19 - 2025-01-07 23:03] Bus ddh_12204	(JTZV -> WDWO)
+    [2025-01-07 07:30 - 2025-01-07 10:05] Bus ddh_12321	(ZOEV -> JTZV)
+    [2025-01-07 10:13 - 2025-01-07 12:08] Bus ddh_13068	(JTZV -> XALQ)
+    [2025-01-07 12:15 - 2025-01-07 13:42] Bus ddh_12348	(XALQ -> JTZV)
+    [2025-01-07 13:50 - 2025-01-07 15:05] Bus ddh_12807	(JTZV -> XALQ)
+    [2025-01-07 16:05 - 2025-01-07 18:39] Bus ddh_11889	(XALQ -> JTZV)
+    [2025-01-07 18:43 - 2025-01-07 22:36] Bus ddh_11943	(JTZV -> WDWO)
 
   === Cycle 1 ===
   Duration: 87h 10m
@@ -8904,9 +8893,9 @@ Base:    IGVH
   Location: ZFTY
 
   === Duty Period 4 ===
-  Duration: 24h 15m | Tasks: 6 | Flights: 0 | Flight Time: 0h 0m
+  Duration: 22h 50m | Tasks: 6 | Flights: 0 | Flight Time: 0h 0m
   Start: 2025-01-06 21:55
-  End:   2025-01-07 22:10
+  End:   2025-01-07 20:45
 
     Layover Airport:  JTZV
     Layover Validity:  Yes
@@ -8914,8 +8903,8 @@ Base:    IGVH
     [2025-01-07 07:30 - 2025-01-07 10:05] Bus ddh_12321	(ZOEV -> JTZV)
     [2025-01-07 10:13 - 2025-01-07 12:08] Bus ddh_13068	(JTZV -> XALQ)
     [2025-01-07 12:15 - 2025-01-07 13:42] Bus ddh_12348	(XALQ -> JTZV)
-    [2025-01-07 13:56 - 2025-01-07 18:10] Bus ddh_12636	(JTZV -> WDWO)
-    [2025-01-07 18:35 - 2025-01-07 22:10] Bus ddh_13104	(WDWO -> JTZV)
+    [2025-01-07 14:43 - 2025-01-07 17:34] Bus ddh_12519	(JTZV -> XALQ)
+    [2025-01-07 18:50 - 2025-01-07 20:45] Bus ddh_12303	(XALQ -> JTZV)
 
   === Cycle 1 ===
   Duration: 86h 20m
@@ -10093,22 +10082,22 @@ Base:    JTZV
   Location: VEYC
 
   === Duty Period 5 ===
-  Duration: 50h 49m | Tasks: 10 | Flights: 0 | Flight Time: 0h 0m
+  Duration: 52h 31m | Tasks: 10 | Flights: 0 | Flight Time: 0h 0m
   Start: 2025-01-05 15:00
-  End:   2025-01-07 17:49
+  End:   2025-01-07 19:31
 
-    Layover Airport:  XALQ
+    Layover Airport:  JTZV
     Layover Validity:  Yes
     [2025-01-05 15:00 - 2025-01-05 18:00] Bus ddh_12571	(VEYC -> JTZV)
-    [2025-01-05 18:18 - 2025-01-05 21:28] Bus ddh_12184	(JTZV -> XALQ)
-    [2025-01-05 23:00 - 2025-01-05 23:59] Bus ddh_11986	(XALQ -> JTZV)
+    [2025-01-05 18:23 - 2025-01-05 19:40] Bus ddh_12661	(JTZV -> XALQ)
+    [2025-01-05 20:21 - 2025-01-05 21:34] Bus ddh_12256	(XALQ -> JTZV)
     [2025-01-06 06:30 - 2025-01-06 09:10] Bus ddh_11535	(JTZV -> ZFTY)
-    [2025-01-06 10:00 - 2025-01-06 14:00] Bus ddh_13328	(ZFTY -> JTZV)
-    [2025-01-06 15:00 - 2025-01-06 18:18] Bus ddh_11735	(JTZV -> WDWO)
-    [2025-01-06 18:35 - 2025-01-06 22:10] Bus ddh_13103	(WDWO -> JTZV)
-    [2025-01-07 07:51 - 2025-01-07 09:50] Bus ddh_13005	(JTZV -> XALQ)
-    [2025-01-07 11:25 - 2025-01-07 14:16] Bus ddh_12357	(XALQ -> JTZV)
-    [2025-01-07 16:39 - 2025-01-07 17:49] Bus ddh_12699	(JTZV -> XALQ)
+    [2025-01-06 19:05 - 2025-01-06 21:05] Bus ddh_13157	(ZFTY -> YELV)
+    [2025-01-07 05:15 - 2025-01-07 08:10] Bus ddh_11588	(YELV -> JTZV)
+    [2025-01-07 08:39 - 2025-01-07 11:18] Bus ddh_12168	(JTZV -> XALQ)
+    [2025-01-07 11:37 - 2025-01-07 13:08] Bus ddh_12069	(XALQ -> JTZV)
+    [2025-01-07 13:50 - 2025-01-07 15:05] Bus ddh_12807	(JTZV -> XALQ)
+    [2025-01-07 17:03 - 2025-01-07 19:31] Bus ddh_13230	(XALQ -> JTZV)
 
   === Cycle 1 ===
   Duration: 82h 0m
@@ -11425,39 +11414,22 @@ Base:    JTZV
   Location: JTZV
 
   === Duty Period 5 ===
-  Duration: 30h 46m | Tasks: 9 | Flights: 0 | Flight Time: 0h 0m
+  Duration: 46h 25m | Tasks: 10 | Flights: 0 | Flight Time: 0h 0m
   Start: 2025-01-05 14:43
-  End:   2025-01-06 21:29
+  End:   2025-01-07 13:08
 
-    Layover Airport:  XALQ
+    Layover Airport:  JTZV
     Layover Validity:  Yes
     [2025-01-05 14:43 - 2025-01-05 17:34] Bus ddh_12517	(JTZV -> XALQ)
     [2025-01-05 17:40 - 2025-01-05 19:16] Bus ddh_13174	(XALQ -> JTZV)
-    [2025-01-05 19:19 - 2025-01-05 23:03] Bus ddh_12202	(JTZV -> WDWO)
-    [2025-01-06 08:50 - 2025-01-06 12:11] Bus ddh_12338	(WDWO -> JTZV)
-    [2025-01-06 12:16 - 2025-01-06 13:18] Bus ddh_12689	(JTZV -> XALQ)
+    [2025-01-05 19:35 - 2025-01-05 23:21] Bus ddh_12931	(JTZV -> WDWO)
+    [2025-01-06 06:38 - 2025-01-06 10:40] Bus ddh_12779	(WDWO -> JTZV)
+    [2025-01-06 10:53 - 2025-01-06 13:02] Bus ddh_11879	(JTZV -> XALQ)
     [2025-01-06 13:29 - 2025-01-06 14:45] Bus ddh_13166	(XALQ -> JTZV)
-    [2025-01-06 15:12 - 2025-01-06 16:29] Bus ddh_13121	(JTZV -> XALQ)
-    [2025-01-06 16:56 - 2025-01-06 19:16] Bus ddh_13112	(XALQ -> JTZV)
-    [2025-01-06 19:49 - 2025-01-06 21:29] Bus ddh_12716	(JTZV -> XALQ)
-
-  --- Rest Period ---
-  Duration: 14h 8m
-  Location: XALQ
-
-  === Duty Period 6 ===
-  Duration: 12h 22m | Tasks: 6 | Flights: 0 | Flight Time: 0h 0m
-  Start: 2025-01-07 11:37
-  End:   2025-01-07 23:59
-
-    Layover Airport:  VEYC
-    Layover Validity:  Yes
-    [2025-01-07 11:37 - 2025-01-07 13:08] Bus ddh_12609	(XALQ -> JTZV)
-    [2025-01-07 13:10 - 2025-01-07 15:34] Bus ddh_12240	(JTZV -> XALQ)
-    [2025-01-07 16:05 - 2025-01-07 18:39] Bus ddh_11889	(XALQ -> JTZV)
-    [2025-01-07 18:50 - 2025-01-07 20:00] Bus ddh_12564	(JTZV -> XALQ)
-    [2025-01-07 20:28 - 2025-01-07 22:02] Bus ddh_12006	(XALQ -> JTZV)
-    [2025-01-07 23:52 - 2025-01-07 23:59] Bus ddh_13266	(JTZV -> VEYC)
+    [2025-01-06 15:00 - 2025-01-06 18:00] Bus ddh_12617	(JTZV -> WDWO)
+    [2025-01-06 19:50 - 2025-01-06 23:18] Bus ddh_12554	(WDWO -> JTZV)
+    [2025-01-07 09:09 - 2025-01-07 11:23] Bus ddh_12060	(JTZV -> XALQ)
+    [2025-01-07 11:37 - 2025-01-07 13:08] Bus ddh_12069	(XALQ -> JTZV)
 
   === Cycle 1 ===
   Duration: 80h 20m
