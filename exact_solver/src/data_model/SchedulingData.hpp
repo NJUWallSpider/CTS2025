@@ -80,6 +80,7 @@ public:
 // FDP 的 C++ 表示
 class FDP {
 public:
+    int id;
 
     std::vector<Task> tasks;
 

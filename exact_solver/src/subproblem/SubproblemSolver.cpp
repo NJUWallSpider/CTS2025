@@ -2,6 +2,7 @@
 #include "../gurobi_solvers/MasterProblem.h"
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <queue>
 #include <chrono>
 #include <iostream>
@@ -35,15 +36,20 @@ void SubproblemSolver::updateDuals() {
     }
 }
 
-void SubproblemSolver::clearCache() {
+void SubproblemSolver::clearCrewSpecificCache() {
     crew_valid_fdps_cache_.clear();
-    flight_duals_cache_.clear();
     fdp_flight_ids_cache_.clear();
     connectivity_cache_.clear();
 }
 
+void SubproblemSolver::clearCache() {
+    clearCrewSpecificCache();
+    flight_duals_cache_.clear();
+}
+
 bool SubproblemSolver::solveForCrew(const std::string& crew_id) {
     // 使用已缓存的对偶值
+    updateDuals();
     return solveForCrewWithDuals(crew_id, flight_duals_cache_);
 }
 
@@ -54,6 +60,7 @@ bool SubproblemSolver::solveForCrewWithDuals(const std::string& crew_id,
     
     // 筛选该机长可执行的合法执勤日（使用缓存）
     std::vector<FDP> valid_fdps = filterValidFDPs(crew_id);
+
     
     // 求解最长路问题，获取最优飞行周期
     std::vector<FDP> best_path = solveLongestPath(crew_id, valid_fdps, crew_dual);
@@ -98,11 +105,6 @@ double SubproblemSolver::getReducedCost() const {
 }
 
 std::vector<FDP> SubproblemSolver::filterValidFDPs(const std::string& crew_id) {
-    // 检查缓存
-    auto cache_it = crew_valid_fdps_cache_.find(crew_id);
-    if (cache_it != crew_valid_fdps_cache_.end()) {
-        return cache_it->second;
-    }
     
     std::vector<FDP> valid_fdps;
     
@@ -225,8 +227,6 @@ std::vector<FDP> SubproblemSolver::filterValidFDPs(const std::string& crew_id) {
         }
     }
     
-    // 存入缓存
-    crew_valid_fdps_cache_[crew_id] = valid_fdps;
     return valid_fdps;
 }
 
@@ -298,28 +298,6 @@ std::vector<FDP> SubproblemSolver::solveLongestPath(const std::string& crew_id,
     return result;
 }
 
-// 辅助函数：按起始机场对FDP进行分组
-std::unordered_map<std::string, std::vector<std::pair<size_t, const FDP*>>> 
-SubproblemSolver::groupFDPsByStartAirport(const std::vector<FDP>& fdps) const {
-    std::unordered_map<std::string, std::vector<std::pair<size_t, const FDP*>>> airport_groups;
-    
-    // 将FDP按起始机场分组，同时保存原始索引
-    for (size_t i = 0; i < fdps.size(); ++i) {
-        const FDP& fdp = fdps[i];
-        airport_groups[fdp.get_start_airport()].emplace_back(i, &fdp);
-    }
-    
-    // 对每个机场组内的FDP按开始时间排序
-    for (auto& [airport, group] : airport_groups) {
-        std::sort(group.begin(), group.end(),
-                 [](const auto& a, const auto& b) {
-                     return a.second->get_start_time() < b.second->get_start_time();
-                 });
-    }
-    
-    return airport_groups;
-}
-
 FDPNetwork SubproblemSolver::buildFDPNetwork(const std::string& crew_id, const std::vector<FDP>& valid_fdps) {
     
     FDPNetwork network;
@@ -331,17 +309,16 @@ FDPNetwork SubproblemSolver::buildFDPNetwork(const std::string& crew_id, const s
                   return a.get_start_time() < b.get_start_time();
               });
     
+    for (int i = 0; i < network.sorted_fdps.size(); ++i) {
+        network.sorted_fdps[i].id = i;
+    }
+    
     // 计算每个FDP的奖励值
     size_t n = network.sorted_fdps.size();
     network.rewards.resize(n);
     for (size_t i = 0; i < n; ++i) {
         network.rewards[i] = calculateFDPReward(network.sorted_fdps[i], flight_duals_cache_);
     }
-    
-    // 构建邻接表表示有向无环图
-    network.graph.resize(n + 2);
-    network.source = n;     // 源点
-    network.sink = n + 1;   // 汇点
     
     // 获取机组信息
     const Crew* crew = data_.get_crew(crew_id);
@@ -352,110 +329,156 @@ FDPNetwork SubproblemSolver::buildFDPNetwork(const std::string& crew_id, const s
     std::string base = crew->base;
     std::string initialStation = crew->initial_station;
     
-    // 检查FDP之前是否有占位任务的辅助函数
-    auto hasDutyBeforeFDP = [&crew](const FDP& fdp) -> bool {
-        for (const auto& duty : crew->ground_duties) {
-            if (duty.end_time <= fdp.get_start_time()) {
-                return true;  
-            }
-        }
-        return false;
-    };
+    // 收集所有唯一的(机场,时间点)节点
+    std::unordered_map<NetworkNode, size_t, NetworkNodeHash> node_map;
     
-    // 检查FDP之后是否有占位任务的辅助函数
-    auto hasDutyAfterFDP = [&crew](const FDP& fdp) -> bool {
-        for (const auto& duty : crew->ground_duties) {
-            if (duty.start_time >= fdp.get_end_time()) {
-                return true;
-            }
-        }
-        return false;
-    };
+    // 添加源点和汇点
+    NetworkNode source_node = {"SOURCE", time_point()};
+    NetworkNode sink_node = {"SINK", time_point()};
     
-    // 从源点到符合条件的FDP的边
+    // 添加源点和汇点到节点集合
+    node_map[source_node] = 0;
+    node_map[sink_node] = 1;
+    network.nodes.push_back(source_node);
+    network.nodes.push_back(sink_node);
+    
+    // 为每个FDP的起点和终点创建节点
     for (size_t i = 0; i < n; ++i) {
         const FDP& fdp = network.sorted_fdps[i];
+        
+        // 创建起点节点
+        NetworkNode start_node = {fdp.get_start_airport(), fdp.get_start_time()};
+        if (node_map.find(start_node) == node_map.end()) {
+            node_map[start_node] = network.nodes.size();
+            network.nodes.push_back(start_node);
+        }
+        
+        // 创建终点节点
+        NetworkNode end_node = {fdp.get_end_airport(), fdp.get_end_time()};
+        if (node_map.find(end_node) == node_map.end()) {
+            node_map[end_node] = network.nodes.size();
+            network.nodes.push_back(end_node);
+        }
+
+        // 创建从节点到FDP的映射
+        network.node_to_fdp_start[start_node].push_back(i);
+        network.node_to_fdp_end[end_node].push_back(i);
+    }
+    
+    // 初始化图结构
+    network.source = 0;
+    network.sink = 1;
+    network.graph.resize(network.nodes.size());
+    
+    // 为每个FDP创建边
+    for (int i = 0; i < n; ++i) {
+        const FDP& fdp = network.sorted_fdps[i];
+        size_t start_node_idx = node_map[{fdp.get_start_airport(), fdp.get_start_time()}];
+        size_t end_node_idx = node_map[{fdp.get_end_airport(), fdp.get_end_time()}];
+        
+        // 创建从起点到终点的边
+        EdgeInfo edge_info;
+        edge_info.best_fdp_idx = static_cast<int>(i);
+        edge_info.reward = network.rewards[i];
+        
+        // 添加新边
+        network.graph[start_node_idx].push_back({end_node_idx, edge_info});
+        
+        // 记录FDP到边的映射，用于快速更新
+        network.fdp_to_edge[i] = {start_node_idx, end_node_idx};
+    }
+    
+    // 从源点到符合条件的起点节点添加边
+    for (size_t i = 2; i < network.nodes.size(); ++i) { // 跳过源点和汇点
+        const auto& node = network.nodes[i];
+        std::string airport = node.airport;
+        time_point time = node.time;
+        
+        // 检查是否有FDP以该节点为起点
+        bool is_start_node = false;
+        auto it = network.node_to_fdp_start.find(node);
+        if (it != network.node_to_fdp_start.end()) {
+            is_start_node = true;
+        }
+        
+        if (!is_start_node) continue; // 如果没有FDP以该节点为起点，跳过
+        
         bool canConnectFromSource = false;
         
-        // debug
-        auto start_time = fdp.get_start_time();
-        auto ground_duties = crew->ground_duties;
-        if (hasDutyBeforeFDP(fdp)) {
-            // 如果FDP之前有占位任务，起点必须是base
-            if (fdp.get_start_airport() == base) {
+        // 检查是否在该时间点之前有占位任务
+        bool has_duty_before = false;
+        for (const auto& duty : crew->ground_duties) {
+            if (duty.end_time <= time) {
+                has_duty_before = true;
+                break;
+            }
+        }
+        
+        if (has_duty_before) {
+            // 如果时间点之前有占位任务，起点必须是base
+            if (airport == base) {
                 canConnectFromSource = true;
             }
         } else {
-            // 如果FDP之前没有占位任务，起点必须是initialStation
-            if (fdp.get_start_airport() == initialStation) {
+            // 如果时间点之前没有占位任务，起点必须是initialStation
+            if (airport == initialStation) {
                 canConnectFromSource = true;
             }
         }
         
         if (canConnectFromSource) {
-            network.graph[network.source].push_back(i);
+            // 创建从源点到起点节点的边
+            EdgeInfo edge_info;
+            edge_info.best_fdp_idx = -1; // 源点到起点没有对应的FDP
+            edge_info.reward = 0.0;
+            
+            network.graph[network.source].push_back({i, edge_info});
         }
     }
     
-    // 按起始机场对FDP进行分组
-    auto airport_groups = groupFDPsByStartAirport(network.sorted_fdps);
-    
-    // 为每个FDP建立连接
-    for (size_t i = 0; i < n; ++i) {
-        const FDP& current_fdp = network.sorted_fdps[i];
+    // 从符合条件的终点节点到汇点添加边
+    for (size_t i = 2; i < network.nodes.size(); ++i) { // 跳过源点和汇点
+        const auto& node = network.nodes[i];
+        std::string airport = node.airport;
+        time_point time = node.time;
         
-        // 符合条件的FDP到汇点的边
+        // 检查是否有FDP以该节点为终点
+        bool is_end_node = false;
+        auto it = network.node_to_fdp_end.find(node);
+        if (it != network.node_to_fdp_end.end()) {
+            is_end_node = true;
+        }
+        
+        if (!is_end_node) continue; // 如果没有FDP以该节点为终点，跳过
+        
         bool canConnectToSink = false;
-        if (hasDutyAfterFDP(current_fdp)) {
-            // 如果FDP之后有占位任务，终点必须是base
-            if (current_fdp.get_end_airport() == base) {
+        
+        // 检查是否在该时间点之后有占位任务
+        bool has_duty_after = false;
+        for (const auto& duty : crew->ground_duties) {
+            if (duty.start_time >= time) {
+                has_duty_after = true;
+                break;
+            }
+        }
+        
+        if (has_duty_after) {
+            // 如果时间点之后有占位任务，终点必须是base
+            if (airport == base) {
                 canConnectToSink = true;
             }
         } else {
-            // 如果FDP之后没有占位任务，任何FDP都可以连接到汇点
+            // 如果时间点之后没有占位任务，任何终点都可以连接到汇点
             canConnectToSink = true;
         }
         
         if (canConnectToSink) {
-            network.graph[i].push_back(network.sink);
-        }
-        
-        const std::string& end_airport = current_fdp.get_end_airport();
-        const auto end_time = current_fdp.get_end_time();
-        
-        // 获取在结束机场开始的所有FDP
-        auto it = airport_groups.find(end_airport);
-        if (it == airport_groups.end()) continue;
-        
-        const auto potential_next_fdps = it->second;
-        
-        // 计算最早可能的开始时间（最短休息时间为12小时）
-        auto earliest_start = end_time + std::chrono::hours(12);
-        
-        // 使用二分查找找到第一个可能连接的FDP
-        auto lower = std::lower_bound(
-            potential_next_fdps.begin(),
-            potential_next_fdps.end(),
-            earliest_start,
-            [](const auto& fdp_pair, const auto& target_time) {
-                return fdp_pair.second->get_start_time() < target_time;
-            }
-        );
-        
-        // 从找到的位置开始扫描，直到找到第一个不满足最大休息时间的FDP
-        for (auto it = lower; it != potential_next_fdps.end(); ++it) {
-            const size_t next_idx = it->first;
-            const FDP* next_fdp = it->second;
+            // 创建从终点节点到汇点的边
+            EdgeInfo edge_info;
+            edge_info.best_fdp_idx = -1; // 终点到汇点没有对应的FDP
+            edge_info.reward = 0.0;
             
-            // 使用缓存检查连接性（这里主要检查其他条件）
-            std::pair<const FDP*, const FDP*> fdp_pair(&current_fdp, next_fdp);
-            bool can_connect;
-            
-            can_connect = canConnect(crew_id, current_fdp, *next_fdp);
-            
-            if (can_connect) {
-                network.graph[i].push_back(next_idx);
-            }
+            network.graph[i].push_back({network.sink, edge_info});
         }
     }
     
@@ -463,9 +486,24 @@ FDPNetwork SubproblemSolver::buildFDPNetwork(const std::string& crew_id, const s
 }
 
 void SubproblemSolver::updateNetworkRewards(FDPNetwork& network) {
-    // 更新网络中每个FDP的奖励值
+    // 更新每个FDP的奖励值
     for (size_t i = 0; i < network.sorted_fdps.size(); ++i) {
         network.rewards[i] = calculateFDPReward(network.sorted_fdps[i], flight_duals_cache_);
+        
+        // 更新所有使用此FDP的边
+        int fdp_idx = static_cast<int>(i);
+        auto pair = network.fdp_to_edge[fdp_idx];
+        size_t from_node = pair.first;
+        size_t to_node = pair.second;
+                
+        // 查找并更新边的奖励值
+        for (auto& edge : network.graph[from_node]) {
+            if (edge.first == to_node && edge.second.reward < network.rewards[fdp_idx]) {
+                edge.second.best_fdp_idx = fdp_idx;
+                edge.second.reward = network.rewards[fdp_idx];
+                break;
+            }
+        }
     }
 }
 
@@ -512,12 +550,21 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
 
     // ---------- 1. 生成"候选飞行周期" --------------------------------------
     struct CycleInfo {
-        std::vector<int> fdps;           // 节点索引序列
+        std::vector<int> fdps;           // FDP索引序列
         time_point       start_day_tp;   // 日期 00:00
         time_point       end_day_tp;     // 日期 23:59
         std::chrono::minutes fly_minutes{};
         double           reward  = 0.0;
         bool             can_reach_sink = false;  // 是否能到达汇点（即在base机场结束）
+        
+        // 记录周期的起止机场，便于周期级连接判断
+        std::string      start_airport;
+        std::string      end_airport;
+        
+        // 添加比较运算符用于排序
+        bool operator>(const CycleInfo& other) const {
+            return reward > other.reward;
+        }
     };
     std::vector<CycleInfo> cycles;
     const auto MAX_FLY   = std::chrono::hours(60);
@@ -530,6 +577,7 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
         return {};
     }
     const auto& ground_duties = crew->ground_duties;
+    std::string base = crew->base;
 
     auto day_floor = [](const time_point& tp){
         return std::chrono::floor<std::chrono::days>(tp);
@@ -573,253 +621,298 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
         return duties_after;
     };
 
-    // ↓ 每个源 -> Beam-Search 出一条本地"最佳周期"
-    for (int src : network.graph[network.source]) {
-        const FDP& first = network.sorted_fdps[src];
-        CycleInfo base;
-        base.fdps       = {src};
-        base.fly_minutes= first.get_flight_hours();
-        base.reward     = network.rewards[src];
+    // 使用新的网络结构生成候选周期
+    // 从源点开始的所有路径
+    for (const auto& source_edge : network.graph[network.source]) {
+        size_t start_node_idx = source_edge.first;
         
-        // 检查第一个FDP之前是否有紧密相连的占位任务
-        auto duties_before = get_duties_before_fdp(first);
-        if (!duties_before.empty()) {
-            const GroundDuty* closest_duty = duties_before[0];
-            int calendar_days = calculate_calendar_days(closest_duty->end_time, first.get_start_time());
-            if (calendar_days < 2) {
-                // 如果占位任务与FDP间隔小于两个完整日历日，周期开始时间应从占位任务开始计算
-                auto farthest_duty = duties_before.back();
-                base.start_day_tp = day_floor(farthest_duty->start_time);
-            } else {
-                base.start_day_tp = day_floor(first.get_start_time());
-            }
-        } else {
-            base.start_day_tp = day_floor(first.get_start_time());
-        }
+        // 使用Beam Search找出从每个起点节点出发的最优路径
+        std::vector<CycleInfo> beam;
         
-        // 检查第一个FDP之后是否有紧密相连的占位任务
-        auto duties_after = get_duties_after_fdp(first);
-        if (!duties_after.empty()) {
-            const GroundDuty* closest_duty = duties_after[0];
-            int calendar_days = calculate_calendar_days(first.get_end_time(), closest_duty->start_time);
-            if (calendar_days < 2) {
-                // 如果占位任务与FDP间隔小于两个完整日历日，周期结束时间应考虑占位任务
-                base.end_day_tp = day_floor(closest_duty->end_time);
-            } else {
-                base.end_day_tp = day_floor(first.get_end_time());
+        // 预处理：为每个机场建立时间索引
+        std::unordered_map<std::string, std::map<time_point, size_t>> airport_time_index;
+        for (size_t i = 2; i < network.nodes.size(); ++i) {
+            const auto& node = network.nodes[i];
+            if (i != network.source && i != network.sink) {
+                airport_time_index[node.airport][node.time] = i;
             }
-        } else {
-            base.end_day_tp = day_floor(first.get_end_time());
         }
 
-        // 约束 1：累计飞行 ≤60h
-        if (base.fly_minutes > MAX_FLY) continue;
-
-        // 约束 2：周期跨度 ≤4 天
-        auto span = std::chrono::duration_cast<std::chrono::days>(base.end_day_tp - base.start_day_tp).count() + 1;
-        if (span > MAX_DAY) continue;
-        
-        // 检查第一个FDP是否在base机场结束
-        if (first.get_end_airport() == crew->base) {
-            base.can_reach_sink = true;
-        } 
-        
-        std::vector<CycleInfo> beam{base};
-
-        for (;;) {
-            std::vector<CycleInfo> next;
-            for (const auto& c : beam) {
-                int last = c.fdps.back();
-                for (int nxt : network.graph[last]) {
-                    if (nxt==network.sink) continue;
-                    const FDP& f = network.sorted_fdps[nxt];
-
-                    CycleInfo tmp = c;
-                    tmp.fdps.push_back(nxt);
-                    tmp.fly_minutes += f.get_flight_hours();
-                    tmp.reward     += network.rewards[nxt];
-                    
-                    // 检查新的最后一个FDP之后是否有紧密相连的占位任务
-                    auto duties_after = get_duties_after_fdp(f);
-                    if (!duties_after.empty()) {
-                        const GroundDuty* closest_duty = duties_after[0];
-                        int calendar_days = calculate_calendar_days(f.get_end_time(), closest_duty->start_time);
-                        if (calendar_days < 2) {
-                            // 如果占位任务与FDP间隔小于两个完整日历日，周期结束时间应考虑占位任务
-                            auto farthest_duty = duties_after.back();
-                            tmp.end_day_tp = day_floor(farthest_duty->end_time);
-                        } else {
-                            tmp.end_day_tp = day_floor(f.get_end_time());
-                        }
-                    } else {
-                        tmp.end_day_tp = day_floor(f.get_end_time());
-                    }
-                    
-                    // 检查新的最后一个FDP是否在base机场结束
-                    if (f.get_end_airport() == crew->base) {
-                        tmp.can_reach_sink = true;
-                    } else {
-                        tmp.can_reach_sink = false;
-                    }
-                    
-                    // 约束 1：累计飞行 ≤60h
-                    if (tmp.fly_minutes > MAX_FLY) continue;
-                    
-                    // 约束 2：周期跨度 ≤4 天
-                    auto span = std::chrono::duration_cast<std::chrono::days>(tmp.end_day_tp - tmp.start_day_tp).count() + 1;
-                    if (span > MAX_DAY) continue;
-
-                    if (tmp.can_reach_sink) {
-                        next.push_back(std::move(tmp));
-                    }
+        // 预处理：缓存每个节点是否可以到达汇点
+        std::vector<bool> can_reach_sink(network.nodes.size(), false);
+        for (size_t i = 0; i < network.nodes.size(); ++i) {
+            for (const auto& edge : network.graph[i]) {
+                if (edge.first == network.sink) {
+                    can_reach_sink[i] = true;
+                    break;
                 }
             }
-            if (next.empty()) break;
-            std::sort(next.begin(), next.end(),
-                [](const CycleInfo& a, const CycleInfo& b){return a.reward > b.reward;});
-            if (next.size() > beam_width_) next.resize(beam_width_);
-            beam.swap(next);
         }
-        // beam 里保留的都是以 src 开头的最优周期
-        for (auto& c:beam) cycles.push_back(std::move(c));
+        
+        // 初始化beam搜索的起点
+        for (const auto& first_edge : network.graph[start_node_idx]) {
+            size_t next_node_idx = first_edge.first;
+            int fdp_idx = first_edge.second.best_fdp_idx;
+            if (fdp_idx == -1) continue;
+            const FDP& first_fdp = network.sorted_fdps[fdp_idx];
+            
+            CycleInfo base_cycle;
+            base_cycle.fdps = {fdp_idx};
+            base_cycle.fly_minutes = first_fdp.get_flight_hours();
+            base_cycle.reward = first_edge.second.reward;
+            base_cycle.start_airport = first_fdp.get_start_airport();
+            base_cycle.end_airport   = first_fdp.get_end_airport();
+        
+            // 检查第一个FDP之前是否有紧密相连的占位任务
+            auto duties_before = get_duties_before_fdp(first_fdp);
+            if (!duties_before.empty()) {
+                const GroundDuty* closest_duty = duties_before[0];
+                int calendar_days = calculate_calendar_days(closest_duty->end_time, first_fdp.get_start_time());
+                if (calendar_days < 2) {
+                    auto farthest_duty = duties_before.back();
+                    base_cycle.start_day_tp = day_floor(farthest_duty->start_time);
+                } else {
+                    base_cycle.start_day_tp = day_floor(first_fdp.get_start_time());
+                }
+            } else {
+                base_cycle.start_day_tp = day_floor(first_fdp.get_start_time());
+            }
+            
+            // 检查第一个FDP之后是否有紧密相连的占位任务
+            auto duties_after = get_duties_after_fdp(first_fdp);
+            if (!duties_after.empty()) {
+                const GroundDuty* closest_duty = duties_after[0];
+                int calendar_days = calculate_calendar_days(first_fdp.get_end_time(), closest_duty->start_time);
+                if (calendar_days < 2) {
+                    base_cycle.end_day_tp = day_floor(closest_duty->end_time);
+                } else {
+                    base_cycle.end_day_tp = day_floor(first_fdp.get_end_time());
+                }
+            } else {
+                base_cycle.end_day_tp = day_floor(first_fdp.get_end_time());
+            }
+
+            // 约束 1：累计飞行 ≤60h
+            if (base_cycle.fly_minutes > MAX_FLY) continue;
+
+            // 约束 2：周期跨度 ≤4 天
+            auto span = std::chrono::duration_cast<std::chrono::days>(base_cycle.end_day_tp - base_cycle.start_day_tp).count() + 1;
+            if (span > MAX_DAY) continue;
+            
+            // 检查第一个FDP是否在base机场结束
+            if (first_fdp.get_end_airport() == base) {
+                base_cycle.can_reach_sink = true;
+            } 
+            
+            beam.push_back(std::move(base_cycle));
+        }
+
+        // 继续Beam Search过程
+        for (;;) {
+            std::vector<CycleInfo> next_beam;
+            
+            for (auto& cycle : beam) {
+                // 获取当前周期最后一个FDP
+                int last_fdp_idx = cycle.fdps.back();
+                const FDP& last_fdp = network.sorted_fdps[last_fdp_idx];
+                
+                // 找到最后一个FDP对应的终点节点
+                auto pair_it = network.fdp_to_edge.find(last_fdp_idx);
+                if (pair_it == network.fdp_to_edge.end()) {
+                    continue;
+                }
+                auto pair = pair_it->second;
+                size_t last_node_idx = pair.second;
+                const NetworkNode& last_node = network.nodes[last_node_idx];
+                
+                // 使用机场索引快速查找下一个可能的节点
+                auto it_airport = airport_time_index.find(last_node.airport);
+                if (it_airport == airport_time_index.end()) continue;
+                
+                // 找到第一个时间满足最小休息时间的节点
+                auto min_next_time = last_node.time + std::chrono::hours(12);
+                auto it_time = it_airport->second.lower_bound(min_next_time);
+                
+                while (it_time != it_airport->second.end()) {
+                    size_t next_node_idx = it_time->second;
+                    const NetworkNode& next_node = network.nodes[next_node_idx];
+                    
+                    // 检查是否有FDP以该节点为起点
+                    auto it_start = network.node_to_fdp_start.find(next_node);
+                    if (it_start == network.node_to_fdp_start.end() || it_start->second.empty()) {
+                        ++it_time;
+                        continue;
+                    }
+                    
+                    // 检查两个节点之间是否有占位任务
+                    bool has_duty_between = false;
+                    bool is_valid = true;
+                    for (const auto& duty : ground_duties) {
+                        if (duty.start_time >= last_node.time && duty.end_time <= next_node.time) {
+                            has_duty_between = true;
+                            if (last_node.airport != base) {
+                                is_valid = false;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!is_valid) {
+                        ++it_time;
+                        continue;
+                    }
+                    
+                    // 遍历从该节点出发的所有边
+                    for (const auto& edge : network.graph[next_node_idx]) {
+                        if (edge.first == network.sink) continue;
+
+                        int fdp_idx = edge.second.best_fdp_idx;
+                        const FDP& next_fdp = network.sorted_fdps[fdp_idx];
+                        double next_reward = edge.second.reward;
+                        
+                        CycleInfo next_cycle = cycle;
+                        next_cycle.fdps.push_back(fdp_idx);
+                        next_cycle.fly_minutes += next_fdp.get_flight_hours();
+                        next_cycle.reward += next_reward;
+                        next_cycle.end_airport = next_fdp.get_end_airport();
+                        
+                        // 检查新的最后一个FDP之后是否有紧密相连的占位任务
+                        auto duties_after = get_duties_after_fdp(next_fdp);
+                        if (!duties_after.empty()) {
+                            const GroundDuty* closest_duty = duties_after[0];
+                            int calendar_days = calculate_calendar_days(next_fdp.get_end_time(), closest_duty->start_time);
+                            if (calendar_days < 2) {
+                                auto farthest_duty = duties_after.back();
+                                next_cycle.end_day_tp = day_floor(farthest_duty->end_time);
+                            } else {
+                                next_cycle.end_day_tp = day_floor(next_fdp.get_end_time());
+                            }
+                        } else {
+                            next_cycle.end_day_tp = day_floor(next_fdp.get_end_time());
+                        }
+                        
+                        // 约束检查
+                        if (next_cycle.fly_minutes > MAX_FLY) continue;
+                        
+                        auto span = std::chrono::duration_cast<std::chrono::days>(
+                            next_cycle.end_day_tp - next_cycle.start_day_tp).count() + 1;
+                        if (span > MAX_DAY) continue;
+
+                        // 使用预计算的can_reach_sink
+                        if (can_reach_sink[next_node_idx]) {
+                            next_cycle.can_reach_sink = true;
+                        }
+                        next_beam.push_back(std::move(next_cycle));
+                    }
+                    ++it_time;
+                }
+            }
+            
+            if (next_beam.empty()) break;
+            
+            // 按奖励值排序并保留最好的beam_width_个
+            std::sort(next_beam.begin(), next_beam.end(),
+                     [](const CycleInfo& a, const CycleInfo& b) {
+                         return a.reward > b.reward;
+                     });
+            
+            if (next_beam.size() > static_cast<size_t>(beam_width_)) {
+                next_beam.resize(beam_width_);
+            }
+            
+            beam.swap(next_beam);
+        }
+        
+        // 将该起点的所有候选周期添加到总集合中
+        for (auto& cycle : beam) {
+            cycles.push_back(std::move(cycle));
+        }
     }
 
     if (cycles.empty()) return {};
 
-    // ---------- 2. 离散化日历轴，做后向 DP ----------------------------------
-    // 取全局最早＆最晚日期
-    auto min_day = cycles[0].start_day_tp;
-    auto max_day = cycles[0].end_day_tp;
-    for (auto& c:cycles){
-        min_day = std::min(min_day,c.start_day_tp);
-        max_day = std::max(max_day,c.end_day_tp);
-    }
-    int D = std::chrono::duration_cast<std::chrono::days>(max_day - min_day).count()+1;        // 总天数
-    std::vector<double> dp(D, 0.0);             // +3 留两天休息边界
+    // ====================== 优化后的周期级 DAG 最长路 =====================
+    const double NEG_INF = -1e100;
+    int n_cycles = static_cast<int>(cycles.size());
+    std::vector<double> dist(n_cycles, NEG_INF);
+    std::vector<int>    prev_idx(n_cycles, -1);
 
-    // 预索引：某天开始的所有周期
-    std::vector<std::vector<int>> day2cycles(D);
-    for (int i=0;i<(int)cycles.size();++i){
-        int d = std::chrono::duration_cast<std::chrono::days>(cycles[i].start_day_tp - min_day).count();
-        day2cycles[d].push_back(i);
+    // 拓扑序：按开始日期排序
+    std::vector<int> order(n_cycles);
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(), [&](int a, int b){
+        return cycles[a].start_day_tp < cycles[b].start_day_tp;
+    });
+
+    // 初始化：所有周期都可作为首周期
+    for (int idx = 0; idx < n_cycles; ++idx) {
+        dist[idx] = cycles[idx].reward;
     }
 
-    // 后向 DP
-    for (int d=D-1; d>=0; --d){
-        double best = dp[d+1];                    // 休息一天
-        for(int idx: day2cycles[d]){
-            auto& c = cycles[idx];
-            // 只考虑能够回到汇点的周期（即在base机场结束的周期）
-            if (!c.can_reach_sink) continue;
+    // 使用基于机场的索引加速查找（关键优化）
+    std::unordered_map<std::string, std::multimap<time_point, int>> airport_start_map;
+
+    for (int idx : order) {
+        if (dist[idx] <= NEG_INF/2) continue;
+        
+        auto& cur_cycle = cycles[idx];
+        // 关键优化：查找可接续的后续周期
+        auto it_air = airport_start_map.find(cur_cycle.end_airport);
+        if (it_air != airport_start_map.end()) {
+            // 修正时间间隔判断：至少间隔2整天（原代码逻辑）
+            auto min_start = cur_cycle.end_day_tp + std::chrono::days(3);
+            auto& start_map = it_air->second;
+            auto it_low = start_map.lower_bound(min_start);
             
-            int  dur = std::chrono::duration_cast<std::chrono::days>(c.end_day_tp - c.start_day_tp).count()+1;
-            int  nxt = d + dur + 2;               // 强制休息两天
-            if (nxt > D) nxt = D;
-            best = std::max(best, c.reward + dp[nxt]);
+            // 遍历所有可能的后继周期
+            for (auto it = it_low; it != start_map.end(); ++it) {
+                int next_idx = it->second;
+                // 候选收益 = 当前收益 + 后继周期收益
+                double cand = dist[idx] + cycles[next_idx].reward;
+                
+                // 松弛操作
+                if (cand > dist[next_idx] + 1e-6) {
+                    dist[next_idx] = cand;
+                    prev_idx[next_idx] = idx;
+                }
+            }
         }
-        dp[d] = best;
+        
+        // 将当前周期加入索引（供后续周期查找）
+        airport_start_map[cur_cycle.start_airport].insert(
+            {cur_cycle.start_day_tp, idx});
     }
 
-    double total_profitability = dp[0] - crew_dual;
-    if (total_profitability <= 1e-6) {
-        // 如果这位机长最优的完整计划都无法创造正的盈利，
-        // 那么就没有任何值得添加的新列。
+    // 选择能连接到汇点的最佳周期
+    double best_total = NEG_INF;
+    int best_end = -1;
+    for (int i = 0; i < n_cycles; ++i) {
+        if (!cycles[i].can_reach_sink) continue;
+        if (dist[i] > best_total) {
+            best_total = dist[i];
+            best_end = i;
+        }
+    }
+
+    if (best_end == -1 || best_total - crew_dual <= 1e-6) {
         return {};
     }
 
-    // ---------- 3. 回溯得到首个 reduced-cost>0 的周期 -------------------------
+    // 回溯
+    std::vector<int> path_indices;
+    for (int idx = best_end; idx != -1; idx = prev_idx[idx]) {
+        path_indices.push_back(idx);
+    }
+    std::reverse(path_indices.begin(), path_indices.end());
+
     std::vector<FDP> chosen_cycle;
-    int cur = 0;
-    while(cur < D){
-        // 若休息是最佳
-        if (dp[cur] == dp[cur+1]) { ++cur; continue; }
-
-        // 找到使值提升的周期
-        for(int idx: day2cycles[cur]){
-            auto& c = cycles[idx];
-            // 只考虑能够回到汇点的周期（即在base机场结束的周期）
-            if (!c.can_reach_sink) continue;
-            
-            int dur = std::chrono::duration_cast<std::chrono::days>(c.end_day_tp-c.start_day_tp).count()+1;
-            int nxt = cur+dur+2;
-            if (nxt>D) nxt=D;
-            if (std::abs(dp[cur] - (c.reward+dp[nxt])) < 1e-6){   // 选中
-                double red_cost = c.reward - crew_dual;
-                if (red_cost > 1e-6){           // 找到正 reduced cost
-                    for(int node: c.fdps)
-                        chosen_cycle.push_back(network.sorted_fdps[node]);
-                    return chosen_cycle;
-                }
-                cur = nxt;                      // 否则继续往后找
-                break;
-            }
+    for (int idx : path_indices) {
+        for (int fdp_idx : cycles[idx].fdps) {
+            if (fdp_idx == -1) continue;
+            chosen_cycle.push_back(network.sorted_fdps[fdp_idx]);
         }
     }
-    return {};
-}
-
-bool SubproblemSolver::canConnect(std::string crew_id, const FDP& fdp1, const FDP& fdp2) const {
-    // 检查时间顺序
-    if (fdp1.get_end_time() >= fdp2.get_start_time()) {
-        return false;
-    }
-    
-    // 检查最小休息时间
-    auto rest_time = std::chrono::duration_cast<std::chrono::hours>(
-        fdp2.get_start_time() - fdp1.get_end_time());
-    if (rest_time.count() < 12) {
-        return false;
-    }
-
-    const Crew* crew = data_.get_crew(crew_id);
-    std::string base = crew->base;
-    
-    // 检查两个FDP之间是否有占位任务
-    bool has_duty_between = false;
-    for (const auto& duty : crew->ground_duties) {
-        // 检查占位任务是否在两个FDP之间
-        // 占位任务的开始时间在fdp1结束之后，结束时间在fdp2开始之前
-        if (duty.start_time >= fdp1.get_end_time() && duty.end_time <= fdp2.get_start_time()) {
-            has_duty_between = true;
-            // 如果有占位任务，则要求两个FDP的相关机场都必须是基地机场
-            if (fdp1.get_end_airport() != base || fdp2.get_start_airport() != base) {
-                return false;
-            }
-        }
-    }
-    
-    // 如果没有占位任务，则只需要检查位置连接性
-    if (!has_duty_between) {
-        if (fdp1.get_end_airport() != fdp2.get_start_airport()) {
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-double SubproblemSolver::calculateRestCost(const FDP& fdp1, const FDP& fdp2) const {
-    // 简化的休息成本计算
-    // 如果在基地外过夜，有额外成本
-    double cost = 0.0;
-    
-    // 获取第一个机长的基地（简化处理，假设所有FDP属于同一个机长）
-    std::string base = "";
-    if (!data_.get_all_crews().empty()) {
-        base = data_.get_all_crews().begin()->second.base;
-    }
-    
-    // 如果在非基地机场过夜，添加成本
-    if (fdp1.get_end_airport() != base) {
-        cost += 100.0; // 简化的过夜成本
-    }
-    
-    // 休息时间越长，成本越高
-    auto rest_time = std::chrono::duration_cast<std::chrono::hours>(
-        fdp2.get_start_time() - fdp1.get_end_time());
-    cost += rest_time.count() * 5.0; // 每小时5单位成本
-    
-    return cost;
+    return chosen_cycle;
 }
 
 void SubproblemSolver::precomputeAllFDPNetworks() {
@@ -860,6 +953,17 @@ void SubproblemSolver::precomputeAllFDPNetworks() {
             // 保存到文件
             std::string file_path = getNetworkFilePath(crew_id);
             serializeFDPNetwork(crew_id, network, file_path);
+
+            // 验证网络
+            // FDPNetwork test_network;
+            // if (!deserializeFDPNetwork(crew_id, file_path, test_network)) {
+            //     std::cerr << "反序列化网络失败: " << crew_id << std::endl;
+            //     continue;
+            // }
+            // if (!compareNetworks(network, test_network)) {
+            //     std::cerr << "网络不一致: " << crew_id << std::endl;
+            //     continue;
+            // }
         }
         
         // 更新进度
@@ -879,12 +983,14 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
     
     // 获取所有需要处理的机组ID
     std::vector<std::string> all_crew_ids;
-    for (const auto& [crew_id, crew] : data_.get_all_crews()) {
-        std::string file_path = getNetworkFilePath(crew_id);
-        if (fs::exists(file_path)) {
-            continue;
+    {
+        for (const auto& [crew_id, crew] : data_.get_all_crews()) {
+            std::string file_path = getNetworkFilePath(crew_id);
+            if (fs::exists(file_path)) {
+                continue;
+            }
+            all_crew_ids.push_back(crew_id);
         }
-        all_crew_ids.push_back(crew_id);
     }
     
     // 创建网络存储目录
@@ -899,7 +1005,7 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
     
     size_t total_count = all_crew_ids.size();
     std::atomic<size_t> processed_count(0);
-    std::mutex cout_mutex; // 用于保护输出操作
+    std::mutex cout_mutex;
     
     // 创建任务队列
     std::mutex queue_mutex;
@@ -909,36 +1015,42 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
     std::vector<std::thread> threads;
     
     auto worker_function = [&]() {
-        // 每个线程创建自己的SubproblemSolver实例，避免共享缓存
+        // 为每个线程创建一个独立的SubproblemSolver实例
         SubproblemSolver local_solver(data_, master_, network_directory_, 
-                                      non_base_rejection_prob_, beam_width_);
-        
+                non_base_rejection_prob_, beam_width_);
+                
         while (true) {
             // 获取下一个要处理的机组ID
             std::string crew_id;
             {
                 std::lock_guard<std::mutex> lock(queue_mutex);
                 if (next_index >= all_crew_ids.size()) {
-                    break; // 所有任务已分配完毕
+                    break;
                 }
                 crew_id = all_crew_ids[next_index++];
             }
-            
+
             try {
-                // 过滤有效的FDP - 使用本地实例避免缓存冲突
+                // 过滤有效的FDP
                 std::vector<FDP> valid_fdps = local_solver.filterValidFDPs(crew_id);
                 
                 if (!valid_fdps.empty()) {
-                    // 构建网络 - 使用本地实例避免缓存冲突
+                    // 构建网络
                     FDPNetwork network = local_solver.buildFDPNetwork(crew_id, valid_fdps);
                     
-                    // 保存到文件 - 每个线程写入不同的文件，避免IO冲突
+                    // 保存到文件
                     std::string file_path = getNetworkFilePath(crew_id);
-                    
-                    // 使用临时文件路径
                     std::string temp_file_path = file_path + ".tmp";
 
-                    // local_solver.serializeFDPNetwork(crew_id, network, file_path);
+                    // 使用RAII确保临时文件被清理
+                    struct TempFileGuard {
+                        std::string path;
+                        ~TempFileGuard() {
+                            if (fs::exists(path)) {
+                                fs::remove(path);
+                            }
+                        }
+                    } temp_file_guard{temp_file_path};
                     
                     // 尝试最多3次序列化和验证
                     bool success = false;
@@ -949,23 +1061,20 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
                             continue;
                         }
                         
-                        // 验证临时文件
                         FDPNetwork test_network;
                         if (!local_solver.deserializeFDPNetwork(crew_id, temp_file_path, test_network)) {
-                            fs::remove(temp_file_path);
                             std::this_thread::sleep_for(std::chrono::milliseconds(100));
                             continue;
                         }
                         
-                        // 比较原始网络和反序列化网络
                         if (local_solver.compareNetworks(network, test_network)) {
-                            // 验证成功，将临时文件重命名为最终文件
                             try {
                                 if (fs::exists(file_path)) {
                                     fs::remove(file_path);
                                 }
                                 fs::rename(temp_file_path, file_path);
                                 success = true;
+                                break;
                             } catch (const std::exception& e) {
                                 std::lock_guard<std::mutex> lock(cout_mutex);
                                 std::cerr << "重命名文件失败: " << e.what() << std::endl;
@@ -974,7 +1083,14 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
                     }
                 }
                 
-                // 更新进度并输出
+                // 清理本地缓存
+                local_solver.clearCache();
+                
+                // 清理可能的大对象
+                valid_fdps.clear();
+                valid_fdps.shrink_to_fit();
+                
+                // 更新进度
                 size_t current = ++processed_count;
                 {
                     std::lock_guard<std::mutex> lock(cout_mutex);
@@ -986,8 +1102,13 @@ void SubproblemSolver::precomputeAllFDPNetworksParallel(int num_threads) {
             } catch (const std::exception& e) {
                 std::lock_guard<std::mutex> lock(cout_mutex);
                 std::cerr << "处理机组 " << crew_id << " 时发生错误: " << e.what() << std::endl;
+                // 确保发生异常时也清理缓存
+                local_solver.clearCache();
             }
         }
+        
+        // 线程结束前确保清理
+        local_solver.clearCache();
     };
     
     // 启动工作线程
@@ -1025,10 +1146,25 @@ bool SubproblemSolver::serializeFDPNetwork(const std::string& crew_id, const FDP
         }
         
         // 写入网络基本信息
-        size_t n = network.sorted_fdps.size();
-        file.write(reinterpret_cast<const char*>(&n), sizeof(n));
+        size_t n_fdps = network.sorted_fdps.size();
+        size_t n_nodes = network.nodes.size();
+        file.write(reinterpret_cast<const char*>(&n_fdps), sizeof(n_fdps));
+        file.write(reinterpret_cast<const char*>(&n_nodes), sizeof(n_nodes));
         file.write(reinterpret_cast<const char*>(&network.source), sizeof(network.source));
         file.write(reinterpret_cast<const char*>(&network.sink), sizeof(network.sink));
+        
+        // 写入节点信息
+        for (const auto& node : network.nodes) {
+            // 写入机场
+            size_t airport_len = node.airport.size();
+            file.write(reinterpret_cast<const char*>(&airport_len), sizeof(airport_len));
+            file.write(node.airport.c_str(), airport_len);
+            
+            // 写入时间点
+            auto duration = node.time.time_since_epoch();
+            int64_t microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+            file.write(reinterpret_cast<const char*>(&microseconds), sizeof(microseconds));
+        }
         
         // 写入FDP序列
         for (const auto& fdp : network.sorted_fdps) {
@@ -1075,8 +1211,64 @@ bool SubproblemSolver::serializeFDPNetwork(const std::string& crew_id, const FDP
             size_t adj_size = adj_list.size();
             file.write(reinterpret_cast<const char*>(&adj_size), sizeof(adj_size));
             
-            for (int node : adj_list) {
-                file.write(reinterpret_cast<const char*>(&node), sizeof(node));
+            for (const auto& edge : adj_list) {
+                // 写入目标节点索引
+                size_t target_node = edge.first;
+                file.write(reinterpret_cast<const char*>(&target_node), sizeof(target_node));
+                
+                // 写入边信息
+                int best_fdp_idx = edge.second.best_fdp_idx;
+                double reward = edge.second.reward;
+                file.write(reinterpret_cast<const char*>(&best_fdp_idx), sizeof(best_fdp_idx));
+                file.write(reinterpret_cast<const char*>(&reward), sizeof(reward));
+            }
+        }
+        
+        // 写入FDP到边的映射
+        size_t fdp_to_edge_size = network.fdp_to_edge.size();
+        file.write(reinterpret_cast<const char*>(&fdp_to_edge_size), sizeof(fdp_to_edge_size));
+        
+        for (const auto& [fdp_idx, edge_pair] : network.fdp_to_edge) {
+            // 写入FDP索引
+            file.write(reinterpret_cast<const char*>(&fdp_idx), sizeof(fdp_idx));
+            
+            // 写入边的起点和终点
+            file.write(reinterpret_cast<const char*>(&edge_pair.first), sizeof(edge_pair.first));
+            file.write(reinterpret_cast<const char*>(&edge_pair.second), sizeof(edge_pair.second));
+        }
+
+        // 写入 node_to_fdp_start
+        size_t node_to_fdp_start_size = network.node_to_fdp_start.size();
+        file.write(reinterpret_cast<const char*>(&node_to_fdp_start_size), sizeof(node_to_fdp_start_size));
+        for (const auto& [node, fdp_vec] : network.node_to_fdp_start) {
+            // 写入节点
+            size_t airport_len = node.airport.size();
+            file.write(reinterpret_cast<const char*>(&airport_len), sizeof(airport_len));
+            file.write(node.airport.c_str(), airport_len);
+            auto duration = node.time.time_since_epoch();
+            int64_t microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+            file.write(reinterpret_cast<const char*>(&microseconds), sizeof(microseconds));
+            // 写入vector<int>
+            size_t vec_size = fdp_vec.size();
+            file.write(reinterpret_cast<const char*>(&vec_size), sizeof(vec_size));
+            for (int idx : fdp_vec) {
+                file.write(reinterpret_cast<const char*>(&idx), sizeof(idx));
+            }
+        }
+        // 写入 node_to_fdp_end
+        size_t node_to_fdp_end_size = network.node_to_fdp_end.size();
+        file.write(reinterpret_cast<const char*>(&node_to_fdp_end_size), sizeof(node_to_fdp_end_size));
+        for (const auto& [node, fdp_vec] : network.node_to_fdp_end) {
+            size_t airport_len = node.airport.size();
+            file.write(reinterpret_cast<const char*>(&airport_len), sizeof(airport_len));
+            file.write(node.airport.c_str(), airport_len);
+            auto duration = node.time.time_since_epoch();
+            int64_t microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+            file.write(reinterpret_cast<const char*>(&microseconds), sizeof(microseconds));
+            size_t vec_size = fdp_vec.size();
+            file.write(reinterpret_cast<const char*>(&vec_size), sizeof(vec_size));
+            for (int idx : fdp_vec) {
+                file.write(reinterpret_cast<const char*>(&idx), sizeof(idx));
             }
         }
         
@@ -1097,16 +1289,38 @@ bool SubproblemSolver::deserializeFDPNetwork(const std::string& crew_id, const s
         }
         
         // 读取网络基本信息
-        size_t n;
-        file.read(reinterpret_cast<char*>(&n), sizeof(n));
+        size_t n_fdps, n_nodes;
+        file.read(reinterpret_cast<char*>(&n_fdps), sizeof(n_fdps));
+        file.read(reinterpret_cast<char*>(&n_nodes), sizeof(n_nodes));
         file.read(reinterpret_cast<char*>(&network.source), sizeof(network.source));
         file.read(reinterpret_cast<char*>(&network.sink), sizeof(network.sink));
         
+        // 读取节点信息
+        network.nodes.clear();
+        network.nodes.reserve(n_nodes);
+        
+        for (size_t i = 0; i < n_nodes; ++i) {
+            NetworkNode node;
+            
+            // 读取机场
+            size_t airport_len;
+            file.read(reinterpret_cast<char*>(&airport_len), sizeof(airport_len));
+            node.airport.resize(airport_len);
+            file.read(&node.airport[0], airport_len);
+            
+            // 读取时间点
+            int64_t microseconds;
+            file.read(reinterpret_cast<char*>(&microseconds), sizeof(microseconds));
+            node.time = time_point(std::chrono::microseconds(microseconds));
+            
+            network.nodes.push_back(node);
+        }
+        
         // 读取FDP序列
         network.sorted_fdps.clear();
-        network.sorted_fdps.reserve(n);
+        network.sorted_fdps.reserve(n_fdps);
         
-        for (size_t i = 0; i < n; ++i) {
+        for (size_t i = 0; i < n_fdps; ++i) {
             FDP fdp;
             
             // 读取任务数量
@@ -1166,14 +1380,83 @@ bool SubproblemSolver::deserializeFDPNetwork(const std::string& crew_id, const s
             
             network.graph[i].reserve(adj_size);
             for (size_t j = 0; j < adj_size; ++j) {
-                int node;
-                file.read(reinterpret_cast<char*>(&node), sizeof(node));
-                network.graph[i].push_back(node);
+                // 读取目标节点索引
+                size_t target_node;
+                file.read(reinterpret_cast<char*>(&target_node), sizeof(target_node));
+                
+                // 读取边信息
+                EdgeInfo edge_info;
+                file.read(reinterpret_cast<char*>(&edge_info.best_fdp_idx), sizeof(edge_info.best_fdp_idx));
+                file.read(reinterpret_cast<char*>(&edge_info.reward), sizeof(edge_info.reward));
+                
+                network.graph[i].push_back({target_node, edge_info});
             }
         }
         
+        // 读取FDP到边的映射
+        network.fdp_to_edge.clear();
+        size_t fdp_to_edge_size;
+        file.read(reinterpret_cast<char*>(&fdp_to_edge_size), sizeof(fdp_to_edge_size));
+        
+        for (size_t i = 0; i < fdp_to_edge_size; ++i) {
+            // 读取FDP索引
+            int fdp_idx;
+            file.read(reinterpret_cast<char*>(&fdp_idx), sizeof(fdp_idx));
+            
+            // 读取边的起点和终点
+            size_t from_node, to_node;
+            file.read(reinterpret_cast<char*>(&from_node), sizeof(from_node));
+            file.read(reinterpret_cast<char*>(&to_node), sizeof(to_node));
+            
+            // 存储FDP到边的映射
+            network.fdp_to_edge[fdp_idx] = {from_node, to_node};
+        }
+        
         // 初始化奖励值
-        network.rewards.resize(n, 0.0);
+        network.rewards.resize(n_fdps, 0.0);
+
+        // 读取 node_to_fdp_start
+        network.node_to_fdp_start.clear();
+        size_t node_to_fdp_start_size;
+        file.read(reinterpret_cast<char*>(&node_to_fdp_start_size), sizeof(node_to_fdp_start_size));
+        for (size_t i = 0; i < node_to_fdp_start_size; ++i) {
+            NetworkNode node;
+            size_t airport_len;
+            file.read(reinterpret_cast<char*>(&airport_len), sizeof(airport_len));
+            node.airport.resize(airport_len);
+            file.read(&node.airport[0], airport_len);
+            int64_t microseconds;
+            file.read(reinterpret_cast<char*>(&microseconds), sizeof(microseconds));
+            node.time = time_point(std::chrono::microseconds(microseconds));
+            size_t vec_size;
+            file.read(reinterpret_cast<char*>(&vec_size), sizeof(vec_size));
+            std::vector<int> fdp_vec(vec_size);
+            for (size_t j = 0; j < vec_size; ++j) {
+                file.read(reinterpret_cast<char*>(&fdp_vec[j]), sizeof(fdp_vec[j]));
+            }
+            network.node_to_fdp_start[node] = fdp_vec;
+        }
+        // 读取 node_to_fdp_end
+        network.node_to_fdp_end.clear();
+        size_t node_to_fdp_end_size;
+        file.read(reinterpret_cast<char*>(&node_to_fdp_end_size), sizeof(node_to_fdp_end_size));
+        for (size_t i = 0; i < node_to_fdp_end_size; ++i) {
+            NetworkNode node;
+            size_t airport_len;
+            file.read(reinterpret_cast<char*>(&airport_len), sizeof(airport_len));
+            node.airport.resize(airport_len);
+            file.read(&node.airport[0], airport_len);
+            int64_t microseconds;
+            file.read(reinterpret_cast<char*>(&microseconds), sizeof(microseconds));
+            node.time = time_point(std::chrono::microseconds(microseconds));
+            size_t vec_size;
+            file.read(reinterpret_cast<char*>(&vec_size), sizeof(vec_size));
+            std::vector<int> fdp_vec(vec_size);
+            for (size_t j = 0; j < vec_size; ++j) {
+                file.read(reinterpret_cast<char*>(&fdp_vec[j]), sizeof(fdp_vec[j]));
+            }
+            network.node_to_fdp_end[node] = fdp_vec;
+        }
         
         return true;
     } catch (const std::exception& e) {
@@ -1338,25 +1621,115 @@ bool SubproblemSolver::compareNetworks(const FDPNetwork& n1, const FDPNetwork& n
         }
     }
 
+    // 比较节点
+    if (n1.nodes.size() != n2.nodes.size()) {
+        std::cout << "Network nodes size mismatch: " << n1.nodes.size() << " vs " << n2.nodes.size() << std::endl;
+        return false; // Fatal difference
+    }
+
+    for (size_t i = 0; i < n1.nodes.size(); ++i) {
+        const auto& node1 = n1.nodes[i];
+        const auto& node2 = n2.nodes[i];
+        
+        if (node1.airport != node2.airport) {
+            std::cout << "Node airport mismatch at index " << i << ": " << node1.airport << " vs " << node2.airport << std::endl;
+            is_identical = false;
+        }
+        
+        if (node1.time != node2.time) {
+            std::cout << "Node time mismatch at index " << i << std::endl;
+            is_identical = false;
+        }
+    }
+
     if (n1.graph.size() != n2.graph.size()) {
         std::cout << "Network graph size mismatch: " << n1.graph.size() << " vs " << n2.graph.size() << std::endl;
         return false; // Fatal difference
     }
     
-    // Note: We don't compare 'rewards' as it's not part of the serialization.
-    // It is calculated dynamically after loading.
-
+    // 比较图结构
     for (size_t i = 0; i < n1.graph.size(); ++i) {
-        // Sort adjacency lists to ensure order-independent comparison
-        auto adj1 = n1.graph[i];
-        auto adj2 = n2.graph[i];
-        std::sort(adj1.begin(), adj1.end());
-        std::sort(adj2.begin(), adj2.end());
-
-        if (adj1 != adj2) {
-            std::cout << "Difference in graph adjacency list for node " << i << std::endl;
+        if (n1.graph[i].size() != n2.graph[i].size()) {
+            std::cout << "Graph adjacency list size mismatch for node " << i << ": " 
+                     << n1.graph[i].size() << " vs " << n2.graph[i].size() << std::endl;
             is_identical = false;
+            continue;
         }
+        
+        // 创建两个映射，用于比较边
+        std::unordered_map<size_t, const EdgeInfo*> edges_map1, edges_map2;
+        
+        for (const auto& edge : n1.graph[i]) {
+            edges_map1[edge.first] = &edge.second;
+        }
+        
+        for (const auto& edge : n2.graph[i]) {
+            edges_map2[edge.first] = &edge.second;
+        }
+        
+        // 比较映射
+        if (edges_map1.size() != edges_map2.size()) {
+            std::cout << "Edge map size mismatch for node " << i << std::endl;
+            is_identical = false;
+            continue;
+        }
+        
+        for (const auto& [target, info_ptr1] : edges_map1) {
+            auto it = edges_map2.find(target);
+            if (it == edges_map2.end()) {
+                std::cout << "Edge to node " << target << " missing in second network for node " << i << std::endl;
+                is_identical = false;
+                continue;
+            }
+            
+            const EdgeInfo* info_ptr2 = it->second;
+            
+            if (info_ptr1->best_fdp_idx != info_ptr2->best_fdp_idx) {
+                std::cout << "Edge best_fdp_idx mismatch for edge " << i << "->" << target << ": " 
+                         << info_ptr1->best_fdp_idx << " vs " << info_ptr2->best_fdp_idx << std::endl;
+                is_identical = false;
+            }
+            
+            if (std::abs(info_ptr1->reward - info_ptr2->reward) > 1e-6) {
+                std::cout << "Edge reward mismatch for edge " << i << "->" << target << ": " 
+                         << info_ptr1->reward << " vs " << info_ptr2->reward << std::endl;
+                is_identical = false;
+            }
+        }
+    }
+    
+    // 比较FDP到边的映射
+    if (n1.fdp_to_edge.size() != n2.fdp_to_edge.size()) {
+        std::cout << "FDP to edge map size mismatch: " << n1.fdp_to_edge.size() << " vs " << n2.fdp_to_edge.size() << std::endl;
+        is_identical = false;
+    } else {
+        for (const auto& [fdp_idx, pair1] : n1.fdp_to_edge) {
+            auto it2 = n2.fdp_to_edge.find(fdp_idx);
+            if (it2 == n2.fdp_to_edge.end()) {
+                std::cout << "FDP index " << fdp_idx << " missing in second network's map" << std::endl;
+                is_identical = false;
+                continue;
+            }
+            const auto& pair2 = it2->second;
+            if (pair1 != pair2) {
+                std::cout << "Edge pair mismatch for FDP " << fdp_idx << ": (" << pair1.first << "," << pair1.second
+                          << ") vs (" << pair2.first << "," << pair2.second << ")" << std::endl;
+                is_identical = false;
+            }
+        }
+    }
+
+    // 比较 node_to_fdp_start
+    if (n1.node_to_fdp_start.size() != n2.node_to_fdp_start.size()) return false;
+    for (const auto& [node, v1] : n1.node_to_fdp_start) {
+        auto it = n2.node_to_fdp_start.find(node);
+        if (it == n2.node_to_fdp_start.end() || v1 != it->second) return false;
+    }
+    // 比较 node_to_fdp_end
+    if (n1.node_to_fdp_end.size() != n2.node_to_fdp_end.size()) return false;
+    for (const auto& [node, v1] : n1.node_to_fdp_end) {
+        auto it = n2.node_to_fdp_end.find(node);
+        if (it == n2.node_to_fdp_end.end() || v1 != it->second) return false;
     }
 
     return is_identical;
@@ -1376,14 +1749,14 @@ bool SubproblemSolver::testSerialization(const std::string& crew_id, FDPNetwork&
     std::cout << " - 源点连接数: " << original_network.graph[original_network.source].size() << std::endl;
     
     // 统计连接到汇点的节点数
-    size_t sink_connections = 0;
-    for (size_t i = 0; i < original_network.sorted_fdps.size(); ++i) {
-        auto& adj = original_network.graph[i];
-        if (std::find(adj.begin(), adj.end(), original_network.sink) != adj.end()) {
-            sink_connections++;
-        }
-    }
-    std::cout << " - 连接到汇点的节点数: " << sink_connections << std::endl;
+    // size_t sink_connections = 0;
+    // for (size_t i = 0; i < original_network.sorted_fdps.size(); ++i) {
+    //     auto& adj = original_network.graph[i];
+    //     if (std::find(adj.begin(), adj.end(), std::make_pair(original_network.sink, EdgeInfo())) != adj.end()) {
+    //         sink_connections++;
+    //     }
+    // }
+    // std::cout << " - 连接到汇点的节点数: " << sink_connections << std::endl;
 
     // 3. 将网络序列化到临时文件
     std::string temp_filename = "temp_network_test_" + crew_id + ".fdp";
@@ -1411,15 +1784,15 @@ bool SubproblemSolver::testSerialization(const std::string& crew_id, FDPNetwork&
     std::cout << " - 汇点索引: " << deserialized_network.sink << std::endl;
     std::cout << " - 源点连接数: " << deserialized_network.graph[deserialized_network.source].size() << std::endl;
     
-    // 统计连接到汇点的节点数
-    sink_connections = 0;
-    for (size_t i = 0; i < deserialized_network.sorted_fdps.size(); ++i) {
-        auto& adj = deserialized_network.graph[i];
-        if (std::find(adj.begin(), adj.end(), deserialized_network.sink) != adj.end()) {
-            sink_connections++;
-        }
-    }
-    std::cout << " - 连接到汇点的节点数: " << sink_connections << std::endl;
+    // // 统计连接到汇点的节点数
+    // sink_connections = 0;
+    // for (size_t i = 0; i < deserialized_network.sorted_fdps.size(); ++i) {
+    //     auto& adj = deserialized_network.graph[i];
+    //     if (std::find(adj.begin(), adj.end(), deserialized_network.sink) != adj.end()) {
+    //         sink_connections++;
+    //     }
+    // }
+    // std::cout << " - 连接到汇点的节点数: " << sink_connections << std::endl;
 
     // 5. 比较两个网络
     std::cout << "\n--- 比较原始网络和反序列化网络 ---\n" << std::endl;

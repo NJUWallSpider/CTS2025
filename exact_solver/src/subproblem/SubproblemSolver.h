@@ -12,13 +12,57 @@
 // 前向声明
 class MasterProblem;
 
+// 节点类型定义 - 表示(机场,时间点)组合
+struct NetworkNode {
+    std::string airport;
+    time_point time;
+    
+    // 用于比较和哈希
+    bool operator==(const NetworkNode& other) const {
+        return airport == other.airport && time == other.time;
+    }
+};
+
+// 为NetworkNode定义哈希函数
+struct NetworkNodeHash {
+    std::size_t operator()(const NetworkNode& node) const {
+        return std::hash<std::string>{}(node.airport) ^ 
+               std::hash<std::size_t>{}(std::chrono::system_clock::to_time_t(node.time));
+    }
+};
+
+// 边信息 - 存储连接两个节点的最优FDP
+struct EdgeInfo {
+    int best_fdp_idx = -1;  // 最优FDP在sorted_fdps中的索引
+    double reward = 0.0;    // 最优FDP的奖励值
+    bool operator==(const EdgeInfo& other) const {
+        return best_fdp_idx == other.best_fdp_idx && std::abs(reward - other.reward) < 1e-8;
+    }
+};
+
 // FDP网络缓存结构
-struct FDPNetwork {
-    std::vector<FDP> sorted_fdps;           // 按开始时间排序的FDP列表
+class FDPNetwork {
+public:
+    FDPNetwork() = default;
+    std::vector<FDP> sorted_fdps;           // 所有可用的FDP列表
     std::vector<double> rewards;            // 每个FDP的奖励值
-    std::vector<std::vector<int>> graph;    // 邻接表表示的有向无环图
-    size_t source;                          // 源点索引
-    size_t sink;                            // 汇点索引
+    
+    // 节点集合
+    std::vector<NetworkNode> nodes;
+    
+    // 邻接表表示的有向图 - 从节点索引到(目标节点索引,边信息)的映射
+    std::vector<std::vector<std::pair<size_t, EdgeInfo>>> graph;
+    
+    // 源点和汇点索引
+    size_t source;
+    size_t sink;
+    
+    // 从FDP索引到对应边的映射(用于快速更新)
+    std::unordered_map<int, std::pair<size_t, size_t>> fdp_to_edge;
+
+    // 从节点索引到FDP索引的映射
+    std::unordered_map<NetworkNode, std::vector<int>, NetworkNodeHash> node_to_fdp_start;
+    std::unordered_map<NetworkNode, std::vector<int>, NetworkNodeHash> node_to_fdp_end;
 };
 
 class SubproblemSolver {
@@ -33,6 +77,9 @@ public:
     // 清除所有缓存数据
     void clearCache();
     
+    // 只清除与特定机组相关的缓存
+    void clearCrewSpecificCache();
+
     // 为特定机长求解子问题
     bool solveForCrew(const std::string& crew_id);
     bool solveForCrewWithDuals(const std::string& crew_id, 
@@ -81,12 +128,6 @@ private:
     
     // 求解网络最长路
     std::vector<FDP> solveLongestPathWithNetwork(const FDPNetwork& network, double crew_dual, std::string crew_id);
-    
-    // 检查两个FDP是否可以连接
-    bool canConnect(std::string crew_id, const FDP& fdp1, const FDP& fdp2) const;
-    
-    // 计算两个FDP之间的休息成本
-    double calculateRestCost(const FDP& fdp1, const FDP& fdp2) const;
     
     // 获取FDP包含的航班ID（使用缓存）
     std::unordered_set<std::string> getCachedFlightIds(const FDP& fdp) const;
