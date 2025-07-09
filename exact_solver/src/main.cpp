@@ -26,7 +26,8 @@ int main(int argc, char** argv) {
         std::string data_version = "0606";
         std::filesystem::path data_path = std::filesystem::path("data") / data_version; 
         std::string fdp_path = "exact_solver/fdp_networks/" + data_version; // 储存FDP网络的文件夹路径
-        std::filesystem::path heuristic_path = std::filesystem::path("heuristic") / "report" / data_version / "rosterResult.csv"; // 储存启发式解的文件夹路径
+        // std::filesystem::path heuristic_path = std::filesystem::path("heuristic") / "report" / data_version / "rosterResult.csv"; // 储存启发式解的文件夹路径
+        std::filesystem::path heuristic_path = std::filesystem::path("/home/bhz/new-cts/empty_submission.csv");
         Date start_date{std::chrono::year(2025)/std::chrono::May/std::chrono::day(29)};
         Date end_date{std::chrono::year(2025)/std::chrono::June/std::chrono::day(4)};
         
@@ -34,12 +35,12 @@ int main(int argc, char** argv) {
         double non_base_rejection_prob = 0; 
         
         // 设置任务数量阈值，超过此阈值将随机删除bus
-        size_t max_tasks_threshold = 5000;
+        size_t max_tasks_threshold = 10000;
         
         // 设置Beam搜索的宽度
         int beam_width = 25;
 
-        const int MAX_ITERATIONS = 100; // 设置最大迭代次数
+        const int MAX_ITERATIONS = 280; // 设置最大迭代次数
 
         const int NUM_THREADS = 16;  // 设置线程数
 
@@ -80,7 +81,7 @@ int main(int argc, char** argv) {
         // 预处理所有机组的FDP网络
         std::cout << "\n预处理所有机组的FDP网络..." << std::endl;
         auto start_precompute = std::chrono::steady_clock::now();
-        subproblem.precomputeAllFDPNetworksParallel(NUM_THREADS);
+        subproblem.precomputeAllFDPNetworks();
         auto end_precompute = std::chrono::steady_clock::now();
         auto precompute_time = std::chrono::duration_cast<std::chrono::seconds>(end_precompute - start_precompute).count();
         std::cout << "FDP网络预处理完成，耗时: " << precompute_time << " 秒" << std::endl;
@@ -99,6 +100,7 @@ int main(int argc, char** argv) {
             
             // 求解当前主问题
             master.solve();
+            
             std::cout << "当前主问题目标值: " << master.getObjectiveValue() << std::endl;
             
             // 获取所有机长
@@ -115,7 +117,7 @@ int main(int argc, char** argv) {
             std::mt19937 gen(rd());
             
             // 计算需要抽样的机长数量（10%，至少1个）
-            size_t sample_size = std::max(size_t(1), crews.size() / 10);
+            size_t sample_size = std::max(size_t(1), crews.size() / 20);
             
             // 随机打乱vector
             std::shuffle(crew_ids.begin(), crew_ids.end(), gen);
@@ -123,7 +125,7 @@ int main(int argc, char** argv) {
             // 只取前sample_size个机长
             crew_ids.resize(sample_size);
             
-            std::cout << "本次迭代随机抽样 " << sample_size << " 个机长（总数的10%）求解子问题..." << std::endl;
+            std::cout << "本次迭代随机抽样 " << sample_size << " 个机长（总数的5%）求解子问题..." << std::endl;
             
             // 创建机长ID队列
             std::queue<std::string> crew_queue;
@@ -178,6 +180,9 @@ int main(int argc, char** argv) {
                                 }
                             }
                         }
+                        
+                        // 清理该机组的缓存，为下一个机组做准备
+                        subproblem.clearCrewSpecificCache();
                     }
                 });
             }

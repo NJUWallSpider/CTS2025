@@ -205,13 +205,13 @@ void SchedulingData::_link_ground_duties(const std::filesystem::path& file_path)
     }
 
     // 遍历所有机组，如果该机组没有ground duty，则从 crews_ 中删除
-    for (auto it = crews_.begin(); it != crews_.end();) {
-        if (crews_with_duties.find(it->first) == crews_with_duties.end()) {
-            it = crews_.erase(it);
-        } else {
-            ++it;
-        }
-    }
+    // for (auto it = crews_.begin(); it != crews_.end();) {
+    //     if (crews_with_duties.find(it->first) == crews_with_duties.end()) {
+    //         it = crews_.erase(it);
+    //     } else {
+    //         ++it;
+    //     }
+    // }
 }
 
 void SchedulingData::_link_crew_qualifications(const std::filesystem::path& file_path) {

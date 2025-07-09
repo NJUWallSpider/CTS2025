@@ -286,7 +286,7 @@ void PairingGenerator::_dfs_fdp_builder(
     // 必须在可过夜机场结束
     // if (data_.get_layover_stations().count(current_path.back().end_airport) > 0) {
 
-        FDP new_fdp{current_path};
+        FDP new_fdp{0, current_path};
         found_fdps.push_back(std::move(new_fdp));
     // }
 

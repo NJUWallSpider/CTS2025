@@ -5,6 +5,7 @@
 #include <functional>
 #include <fstream>
 #include <chrono>
+#include <filesystem>
 #include "../data_model/ReportGenerator.hpp"
 
 MasterProblem::MasterProblem(const SchedulingData& data, std::string data_version)
@@ -23,8 +24,167 @@ MasterProblem::~MasterProblem() {
     // 智能指针会自动释放model_
 }
 
+std::string MasterProblem::getMPSFilePath() const {
+    // 创建MPS文件目录
+    std::filesystem::path mps_dir = "exact_solver/mps/" + data_version_;
+    std::filesystem::create_directories(mps_dir);
+    
+    // 返回当前迭代的MPS文件路径
+    return (mps_dir / ("master.mps")).string();
+}
+
+void MasterProblem::exportMPSFile() const {
+    try {
+        std::string mps_path = getMPSFilePath();
+        model_->write(mps_path);
+        std::cout << "已导出MPS文件: " << mps_path << std::endl;
+    } catch (GRBException& e) {
+        std::cerr << "导出MPS文件时出错: " << e.getMessage() << std::endl;
+    }
+}
+
+bool MasterProblem::tryLoadFromMPSFile() {
+    try {
+        std::string mps_path = getMPSFilePath();
+        if (std::filesystem::exists(mps_path)) {
+            model_ = std::make_unique<GRBModel>(env_, mps_path);
+            std::cout << "已从MPS文件加载模型: " << mps_path << std::endl;
+            return true;
+        }
+    } catch (GRBException& e) {
+        std::cerr << "加载MPS文件时出错: " << e.getMessage() << std::endl;
+    }
+    return false;
+}
+
 void MasterProblem::initialize() {
     try {
+        // 尝试从MPS文件加载模型
+        if (tryLoadFromMPSFile()) {
+            // 清空列管理相关的数据结构
+            columns_.clear();
+            column_pool_.clear();
+
+            // 关联变量和约束
+            // 1. 关联航班覆盖变量
+            for (const auto& [flight_id, flight] : data_.get_all_flights()) {
+                GRBVar var = model_->getVarByName("y_" + flight_id);
+                if (var.get(GRB_StringAttr_VarName) != "") {
+                    flight_vars_[flight_id] = var;
+                }
+            }
+
+            // 2. 关联航班覆盖约束
+            for (const auto& [flight_id, flight] : data_.get_all_flights()) {
+                GRBConstr constr = model_->getConstrByName("cover_" + flight_id);
+                if (constr.get(GRB_StringAttr_ConstrName) != "") {
+                    flight_constrs_[flight_id] = constr;
+                }
+            }
+
+            // 3. 关联机长资源约束（只关联已存在的约束）
+            for (int i = 0; i < model_->get(GRB_IntAttr_NumConstrs); i++) {
+                GRBConstr constr = model_->getConstr(i);
+                std::string constr_name = constr.get(GRB_StringAttr_ConstrName);
+                if (constr_name.substr(0, 5) == "crew_") {
+                    std::string crew_id = constr_name.substr(5);
+                    crew_constrs_[crew_id] = constr;
+                }
+            }
+
+            // 先优化模型以获取初始解
+            model_->optimize();
+
+            // 4. 关联飞行周期变量并重建pairing_info_和列管理系统
+            int var_idx = 0;
+            for (int i = 0; i < model_->get(GRB_IntAttr_NumVars); i++) {
+                GRBVar var = model_->getVar(i);
+                std::string var_name = var.get(GRB_StringAttr_VarName);
+                if (var_name.substr(0, 2) == "x_") {
+                    // 解析变量名以获取机长ID
+                    size_t first_underscore = var_name.find('_');
+                    size_t second_underscore = var_name.find('_', first_underscore + 1);
+                    if (second_underscore != std::string::npos) {
+                        std::string crew_id = var_name.substr(second_underscore + 1);
+                        pairing_vars_.push_back(var);
+                        
+                        // 更新机长使用记录
+                        crew_usage_[crew_id].push_back(var_idx);
+                        
+                        // 收集该变量覆盖的航班
+                        std::vector<std::string> covered_flights;
+                        for (int j = 0; j < model_->get(GRB_IntAttr_NumConstrs); j++) {
+                            GRBConstr constr = model_->getConstr(j);
+                            double coeff = model_->getCoeff(constr, var);
+                            if (coeff > 0) {
+                                std::string constr_name = constr.get(GRB_StringAttr_ConstrName);
+                                if (constr_name.substr(0, 6) == "cover_") {
+                                    std::string flight_id = constr_name.substr(6);
+                                    covered_flights.push_back(flight_id);
+                                    flight_coverage_[flight_id].push_back(var_idx);
+                                }
+                            }
+                        }
+
+                        // 根据覆盖的航班重建FDP
+                        FDP reconstructed_fdp;
+                        for (const auto& flight_id : covered_flights) {
+                            const Flight* flight = data_.get_flight(flight_id);
+                            if (flight) {
+                                Task task;
+                                task.id = flight_id;
+                                task.task_type = "flight";
+                                task.start_airport = flight->depa_airport;
+                                task.end_airport = flight->arri_airport;
+                                task.start_time = flight->std;
+                                task.end_time = flight->sta;
+                                task.fly_time = std::chrono::minutes(flight->fly_time);
+                                task.aircraft_no = flight->aircraft_no;
+                                reconstructed_fdp.tasks.push_back(task);
+                            }
+                        }
+
+                        // 按时间排序任务
+                        std::sort(reconstructed_fdp.tasks.begin(), reconstructed_fdp.tasks.end(),
+                            [](const Task& a, const Task& b) {
+                                return a.start_time < b.start_time;
+                            });
+
+                        // 更新pairing_info_
+                        pairing_info_.push_back({crew_id, reconstructed_fdp});
+
+                        // 更新added_columns_
+                        added_columns_.insert(generateColumnHash(crew_id, reconstructed_fdp));
+
+                        // 初始化列信息
+                        ColumnInfo col_info(var_idx, crew_id, reconstructed_fdp);
+                        
+                        // 获取当前解值，初始化列状态
+                        if (model_->get(GRB_IntAttr_Status) == GRB_OPTIMAL) {
+                            double value = var.get(GRB_DoubleAttr_X);
+                            if (value < 1e-6) {
+                                col_info.zero_value_count = 1;
+                            }
+                        }
+                        
+                        // 获取变量上界
+                        double ub = var.get(GRB_DoubleAttr_UB);
+                        if (ub < 1e-6) {
+                            col_info.is_active = false;
+                            column_pool_.push_back(var_idx);
+                        }
+
+                        columns_.push_back(col_info);
+                        var_idx++;
+                    }
+                }
+            }
+
+            model_->update();
+            return;
+        }
+
+        // 如果没有MPS文件，创建新模型
         // 创建航班覆盖变量 y_i
         for (const auto& [flight_id, flight] : data_.get_all_flights()) {
             flight_vars_[flight_id] = model_->addVar(0.0, 1.0, 1.0, GRB_CONTINUOUS, "y_" + flight_id);
@@ -42,9 +202,11 @@ void MasterProblem::initialize() {
             flight_constrs_[flight_id] = model_->addConstr(0.0 == var, "cover_" + flight_id);
         }
         
-        
         // 更新模型以包含新变量
         model_->update();
+
+        // 导出初始MPS文件
+        exportMPSFile();
     } catch (GRBException& e) {
         std::cerr << "初始化主问题时出错: " << e.getMessage() << std::endl;
         throw;
@@ -53,6 +215,7 @@ void MasterProblem::initialize() {
 
 void MasterProblem::solve() {
     try {
+
         // 求解原始整数模型
         model_->optimize();
 
@@ -71,8 +234,15 @@ void MasterProblem::solve() {
             for (const auto& [crew_id, constr] : crew_constrs_) {
                 crew_duals_[crew_id] = constr.get(GRB_DoubleAttr_Pi);
             }
+
+             // 更新列状态并进行列管理
+            updateColumnStatus();
+            manageColumns();
             
             iteration_count_++;
+            
+            // 导出当前迭代的MPS文件
+            exportMPSFile();
         } else {
             std::cerr << "LP松弛求解未达到最优状态: " << model_->get(GRB_IntAttr_Status) << std::endl;
             // 如果LP松弛不可行，设置所有对偶值为0
@@ -110,7 +280,6 @@ int MasterProblem::addColumn(const std::string& crew_id, const FDP& fdp) {
     try {
         // 检查列是否已存在
         if (columnExists(crew_id, fdp)) {
-            // std::cout << "列已存在，跳过添加" << std::endl;
             return -1;
         }
         
@@ -158,6 +327,14 @@ int MasterProblem::addColumn(const std::string& crew_id, const FDP& fdp) {
         
         // 将列的哈希值添加到已添加列集合中
         added_columns_.insert(generateColumnHash(crew_id, fdp));
+
+        // 添加列信息到列管理系统
+        columns_.emplace_back(col_idx, crew_id, fdp);
+        
+        // 如果活跃列数量超过限制，触发列管理
+        if (columns_.size() - column_pool_.size() > MAX_ACTIVE_COLUMNS) {
+            deactivateColumns();
+        }
         
         // 更新模型
         model_->update();
@@ -333,7 +510,9 @@ void MasterProblem::printSolution() const {
 
             // 保存结果到CSV文件
         
-            std::ofstream out_file("exact_solver/report/" + data_version_ + "/rosterResult.csv");
+            std::string report_path = "exact_solver/report/" + data_version_ + "/rosterResult.csv";
+            std::filesystem::create_directories("exact_solver/report/" + data_version_);
+            std::ofstream out_file(report_path);
             if (!out_file) {
                 throw std::runtime_error("无法创建输出文件");
             }
@@ -384,7 +563,7 @@ void MasterProblem::convertToIntegerProgram() {
         model_->update();
         
         // 设置求解时间限制（例如7200秒，即2小时）
-        model_->set(GRB_DoubleParam_TimeLimit, 300);
+        model_->set(GRB_DoubleParam_TimeLimit, 900);
         
         // 设置MIP Gap（例如0.01，即1%）
         model_->set(GRB_DoubleParam_MIPGap, 0.01);
@@ -437,4 +616,155 @@ void MasterProblem::solveIntegerProgram() {
         std::cerr << "求解整数规划时出错: " << e.getMessage() << std::endl;
         throw;
     }
+}
+
+void MasterProblem::updateColumnStatus() {
+    // 检查是否有任何活跃列
+    bool has_active_columns = false;
+    for (const auto& col : columns_) {
+        if (col.is_active) {
+            has_active_columns = true;
+            break;
+        }
+    }
+
+    // 如果没有活跃列，重新激活所有列
+    if (!has_active_columns) {
+        for (auto& col : columns_) {
+            col.is_active = true;
+            col.zero_value_count = 0;
+            col.age = 0;
+            pairing_vars_[col.index].set(GRB_DoubleAttr_UB, 1.0);
+        }
+        column_pool_.clear();
+        model_->update();
+        return;
+    }
+
+    // 更新所有列的状态信息
+    for (auto& col : columns_) {
+        if (!col.is_active) continue;  // 跳过非活跃列
+
+        // 获取列的当前解值
+        double value = pairing_vars_[col.index].get(GRB_DoubleAttr_X);
+        
+        // 更新连续解值为0的计数
+        if (value < 1e-6) {
+            col.zero_value_count++;
+        } else {
+            col.zero_value_count = 0;
+            col.age = 0;  // 重置年龄，因为列被使用了
+        }
+
+        // 更新年龄
+        col.age++;
+
+        // 计算并更新检验数
+        col.last_reduced_cost = calculateReducedCost(col);
+    }
+}
+
+double MasterProblem::calculateReducedCost(const ColumnInfo& col) const {
+    double reduced_cost = 0.0;
+    
+    // 获取该列覆盖的航班
+    const auto& fdp = col.fdp;
+    auto covered_flights = fdp.get_included_flight_ids();
+    
+    // 计算检验数：sum(π_i) - ρ_k
+    for (const auto& flight_id : covered_flights) {
+        auto it = flight_duals_.find(flight_id);
+        if (it != flight_duals_.end()) {
+            reduced_cost += it->second;
+        }
+    }
+    
+    // 减去机长的对偶值
+    auto it_crew = crew_duals_.find(col.crew_id);
+    if (it_crew != crew_duals_.end()) {
+        reduced_cost -= it_crew->second;
+    }
+    
+    return reduced_cost;
+}
+
+void MasterProblem::manageColumns() {
+    // 每隔REACTIVATION_INTERVAL次迭代，尝试重激活列
+    if (iteration_count_ % REACTIVATION_INTERVAL == 0) {
+        reactivateColumns();
+    }
+    
+    // 检查是否需要停用一些列
+    deactivateColumns();
+}
+
+void MasterProblem::deactivateColumns() {
+    // 计算当前活跃列的数量
+    int active_count = 0;
+    for (const auto& col : columns_) {
+        if (col.is_active) active_count++;
+    }
+
+    // 如果活跃列数量已经很少，不进行停用
+    if (active_count < MAX_ACTIVE_COLUMNS / 2) {
+        return;
+    }
+
+    for (auto& col : columns_) {
+        if (!col.is_active) continue;  // 跳过已经非活跃的列
+        
+        // 检查是否满足停用条件
+        bool should_deactivate = false;
+        
+        // 条件1：连续多次解值为0且检验数很差
+        if (col.zero_value_count >= MAX_ZERO_VALUE_COUNT && 
+            col.last_reduced_cost < REDUCED_COST_THRESHOLD) {
+            should_deactivate = true;
+        }
+        
+        // 条件2：年龄过大且从未被使用且检验数差
+        if (col.age >= MAX_AGE && col.zero_value_count == col.age && 
+            col.last_reduced_cost < 0) {
+            should_deactivate = true;
+        }
+        
+        if (should_deactivate) {
+            // 将列移入列池
+            col.is_active = false;
+            column_pool_.push_back(col.index);
+            
+            // 在Gurobi模型中将变量的上界设为0，实际上将其从问题中移除
+            pairing_vars_[col.index].set(GRB_DoubleAttr_UB, 0.0);
+        }
+    }
+    model_->update();
+}
+
+void MasterProblem::reactivateColumns() {
+    // 使用当前的对偶值重新评估列池中的列
+    std::vector<int> to_reactivate;
+    
+    for (auto it = column_pool_.begin(); it != column_pool_.end();) {
+        auto& col = columns_[*it];
+        
+        // 计算检验数
+        double reduced_cost = calculateReducedCost(col);
+        
+        // 如果检验数变好了，考虑重新激活
+        if (reduced_cost > 0) {
+            col.is_active = true;
+            col.zero_value_count = 0;  // 重置计数器
+            col.age = 0;               // 重置年龄
+            col.last_reduced_cost = reduced_cost;
+            
+            // 恢复变量的上界
+            pairing_vars_[col.index].set(GRB_DoubleAttr_UB, 1.0);
+            
+            // 从列池中移除
+            it = column_pool_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    model_->update();
 }

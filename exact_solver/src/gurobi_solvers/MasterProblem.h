@@ -7,6 +7,22 @@
 #include <unordered_set>
 #include <string>
 #include <memory>
+#include <deque>
+
+// 列的状态信息
+struct ColumnInfo {
+    int index;                          // 在pairing_vars_中的索引
+    std::string crew_id;                // 机长ID
+    FDP fdp;                           // 飞行值勤期
+    int zero_value_count;              // 连续解值为0的次数
+    int age;                           // 年龄（迭代次数）
+    double last_reduced_cost;          // 最近一次的检验数
+    bool is_active;                    // 是否在活跃集中
+
+    ColumnInfo(int idx, const std::string& cid, const FDP& f) 
+        : index(idx), crew_id(cid), fdp(f), zero_value_count(0), age(0), 
+          last_reduced_cost(0.0), is_active(true) {}
+};
 
 class MasterProblem {
 public:
@@ -88,6 +104,31 @@ private:
     int iteration_count_;
     bool converged_;
 
+    // 列管理相关的参数
+    static constexpr int MAX_ZERO_VALUE_COUNT = 10;   // 连续解值为0的最大次数
+    static constexpr int MAX_AGE = 50;               // 最大年龄
+    static constexpr double REDUCED_COST_THRESHOLD = -10.0; // 检验数阈值
+    static constexpr int REACTIVATION_INTERVAL = 5;   // 重激活检查间隔
+    static constexpr int MAX_ACTIVE_COLUMNS = 2500;   // 活跃列的最大数量
+
+    // 列管理相关的数据结构
+    std::vector<ColumnInfo> columns_;                // 所有列的信息
+    std::deque<int> column_pool_;                   // 列池（存储非活跃列的索引）
+
+    // 列管理相关的方法
+    void manageColumns();                           // 列管理的主要逻辑
+    void updateColumnStatus();                      // 更新列的状态信息
+    void deactivateColumns();                       // 将不活跃的列移入列池
+    void reactivateColumns();                       // 从列池中重激活有潜力的列
+    double calculateReducedCost(const ColumnInfo& col) const;  // 计算列的检验数
+
     // 新增：将变量转换为整数变量
     void convertToIntegerProgram();
+
+    // 新增：导出MPS文件
+    void exportMPSFile() const;
+    // 新增：尝试从MPS文件读取模型
+    bool tryLoadFromMPSFile();
+    // 新增：获取MPS文件路径
+    std::string getMPSFilePath() const;
 };
