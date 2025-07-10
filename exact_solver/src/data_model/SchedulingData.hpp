@@ -271,6 +271,7 @@ private:
     std::unordered_map<std::string, Bus> buses_;
     std::unordered_map<std::string, Crew> crews_;
     std::unordered_set<std::string> excluded_task_ids_; // 存储需要排除的任务ID
+    std::unordered_set<std::string> excluded_crew_ids_; // 存储需要排除的机组ID
     std::unordered_set<std::string> layover_stations_;
     
     // 任务数量阈值，超过此阈值将随机删除bus

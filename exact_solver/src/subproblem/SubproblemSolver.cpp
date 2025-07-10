@@ -565,6 +565,11 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
         bool operator>(const CycleInfo& other) const {
             return reward > other.reward;
         }
+        
+        // 为优先队列添加比较运算符（最小堆，reward较小的在顶部）
+        bool operator<(const CycleInfo& other) const {
+            return reward < other.reward;
+        }
     };
     std::vector<CycleInfo> cycles;
     const auto MAX_FLY   = std::chrono::hours(60);
@@ -621,6 +626,26 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
         return duties_after;
     };
 
+    // 预处理：为每个机场建立时间索引
+    std::unordered_map<std::string, std::map<time_point, size_t>> airport_time_index;
+    for (size_t i = 2; i < network.nodes.size(); ++i) {
+        const auto& node = network.nodes[i];
+        if (i != network.source && i != network.sink) {
+            airport_time_index[node.airport][node.time] = i;
+        }
+    }
+
+    // 预处理：缓存每个节点是否可以到达汇点
+    std::vector<bool> can_reach_sink(network.nodes.size(), false);
+    for (size_t i = 0; i < network.nodes.size(); ++i) {
+        for (const auto& edge : network.graph[i]) {
+            if (edge.first == network.sink) {
+                can_reach_sink[i] = true;
+                break;
+            }
+        }
+    }
+
     // 使用新的网络结构生成候选周期
     // 从源点开始的所有路径
     for (const auto& source_edge : network.graph[network.source]) {
@@ -628,26 +653,6 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
         
         // 使用Beam Search找出从每个起点节点出发的最优路径
         std::vector<CycleInfo> beam;
-        
-        // 预处理：为每个机场建立时间索引
-        std::unordered_map<std::string, std::map<time_point, size_t>> airport_time_index;
-        for (size_t i = 2; i < network.nodes.size(); ++i) {
-            const auto& node = network.nodes[i];
-            if (i != network.source && i != network.sink) {
-                airport_time_index[node.airport][node.time] = i;
-            }
-        }
-
-        // 预处理：缓存每个节点是否可以到达汇点
-        std::vector<bool> can_reach_sink(network.nodes.size(), false);
-        for (size_t i = 0; i < network.nodes.size(); ++i) {
-            for (const auto& edge : network.graph[i]) {
-                if (edge.first == network.sink) {
-                    can_reach_sink[i] = true;
-                    break;
-                }
-            }
-        }
         
         // 初始化beam搜索的起点
         for (const auto& first_edge : network.graph[start_node_idx]) {
@@ -709,9 +714,12 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
 
         // 继续Beam Search过程
         for (;;) {
-            std::vector<CycleInfo> next_beam;
+            auto compare_cycles = [](const CycleInfo& a, const CycleInfo& b) {
+                return a.reward > b.reward;
+            };
+            std::priority_queue<CycleInfo, std::vector<CycleInfo>, decltype(compare_cycles)> next_beam_pq(compare_cycles);
             
-            for (auto& cycle : beam) {
+            for (const auto& cycle : beam) {
                 // 获取当前周期最后一个FDP
                 int last_fdp_idx = cycle.fdps.back();
                 const FDP& last_fdp = network.sorted_fdps[last_fdp_idx];
@@ -732,8 +740,8 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
                 // 找到第一个时间满足最小休息时间的节点
                 auto min_next_time = last_node.time + std::chrono::hours(12);
                 auto it_time = it_airport->second.lower_bound(min_next_time);
-                
-                while (it_time != it_airport->second.end()) {
+                auto max_next_time = last_node.time + std::chrono::hours(48);
+                while (it_time != it_airport->second.end() && it_time->first < max_next_time) {
                     size_t next_node_idx = it_time->second;
                     const NetworkNode& next_node = network.nodes[next_node_idx];
                     
@@ -745,11 +753,9 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
                     }
                     
                     // 检查两个节点之间是否有占位任务
-                    bool has_duty_between = false;
                     bool is_valid = true;
                     for (const auto& duty : ground_duties) {
                         if (duty.start_time >= last_node.time && duty.end_time <= next_node.time) {
-                            has_duty_between = true;
                             if (last_node.airport != base) {
                                 is_valid = false;
                                 break;
@@ -758,69 +764,99 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
                     }
                     
                     if (!is_valid) {
-                        ++it_time;
-                        continue;
+                        break;
                     }
                     
-                    // 遍历从该节点出发的所有边
+                    // 先收集所有边（不检查约束）
+                    std::vector<std::pair<int, double>> all_edges;
+                    all_edges.reserve(network.graph[next_node_idx].size());
+                    
                     for (const auto& edge : network.graph[next_node_idx]) {
                         if (edge.first == network.sink) continue;
-
-                        int fdp_idx = edge.second.best_fdp_idx;
+                        all_edges.emplace_back(edge.second.best_fdp_idx, edge.second.reward);
+                    }
+                    
+                    // 按reward降序排序所有边
+                    std::sort(all_edges.begin(), all_edges.end(),
+                             [](const auto& a, const auto& b) {
+                                 return a.second > b.second;
+                             });
+                    
+                    // 遍历排序后的边，计数满足约束的边
+                    int valid_edge_count = 0;
+                    for (const auto& [fdp_idx, next_reward] : all_edges) {
+                        // 如果已经找到足够多的满足约束的边，结束遍历
+                        if (valid_edge_count >= beam_width_) break;
+                        
                         const FDP& next_fdp = network.sorted_fdps[fdp_idx];
-                        double next_reward = edge.second.reward;
                         
-                        CycleInfo next_cycle = cycle;
-                        next_cycle.fdps.push_back(fdp_idx);
-                        next_cycle.fly_minutes += next_fdp.get_flight_hours();
-                        next_cycle.reward += next_reward;
-                        next_cycle.end_airport = next_fdp.get_end_airport();
+                        // 检查约束条件
+                        // 1. 累计飞行时间约束
+                        auto total_fly_minutes = cycle.fly_minutes + next_fdp.get_flight_hours();
+                        if (total_fly_minutes > MAX_FLY) continue;
                         
-                        // 检查新的最后一个FDP之后是否有紧密相连的占位任务
+                        // 2. 计算结束日期
+                        time_point end_day_tp;
                         auto duties_after = get_duties_after_fdp(next_fdp);
                         if (!duties_after.empty()) {
                             const GroundDuty* closest_duty = duties_after[0];
                             int calendar_days = calculate_calendar_days(next_fdp.get_end_time(), closest_duty->start_time);
                             if (calendar_days < 2) {
                                 auto farthest_duty = duties_after.back();
-                                next_cycle.end_day_tp = day_floor(farthest_duty->end_time);
+                                end_day_tp = day_floor(farthest_duty->end_time);
                             } else {
-                                next_cycle.end_day_tp = day_floor(next_fdp.get_end_time());
+                                end_day_tp = day_floor(next_fdp.get_end_time());
                             }
                         } else {
-                            next_cycle.end_day_tp = day_floor(next_fdp.get_end_time());
+                            end_day_tp = day_floor(next_fdp.get_end_time());
                         }
                         
-                        // 约束检查
-                        if (next_cycle.fly_minutes > MAX_FLY) continue;
-                        
+                        // 3. 周期跨度约束
                         auto span = std::chrono::duration_cast<std::chrono::days>(
-                            next_cycle.end_day_tp - next_cycle.start_day_tp).count() + 1;
+                            end_day_tp - cycle.start_day_tp).count() + 1;
                         if (span > MAX_DAY) continue;
-
+                        
+                        // 满足所有约束，创建新的周期
+                        CycleInfo next_cycle = cycle;
+                        next_cycle.fdps.push_back(fdp_idx);
+                        next_cycle.fly_minutes += next_fdp.get_flight_hours();
+                        next_cycle.reward += next_reward;
+                        next_cycle.end_airport = next_fdp.get_end_airport();
+                        next_cycle.end_day_tp = end_day_tp;
+                        
                         // 使用预计算的can_reach_sink
                         if (can_reach_sink[next_node_idx]) {
                             next_cycle.can_reach_sink = true;
                         }
-                        next_beam.push_back(std::move(next_cycle));
+                        
+                        // 使用优先队列的擂台赛机制
+                        // 如果队列未满，直接加入
+                        if (next_beam_pq.size() < static_cast<size_t>(beam_width_)) {
+                            next_beam_pq.push(std::move(next_cycle));
+                        } 
+                        // 如果队列已满，但当前候选比队列中最差的好，则替换
+                        else if (next_cycle.reward > next_beam_pq.top().reward) {
+                            next_beam_pq.pop(); // 移除最差的
+                            next_beam_pq.push(std::move(next_cycle)); // 加入新的更好的
+                        }
+                        // 否则，直接丢弃这个候选
+                        
+                        // 增加计数
+                        valid_edge_count++;
                     }
+                    
                     ++it_time;
                 }
             }
             
-            if (next_beam.empty()) break;
+            if (next_beam_pq.empty()) break;
             
-            // 按奖励值排序并保留最好的beam_width_个
-            std::sort(next_beam.begin(), next_beam.end(),
-                     [](const CycleInfo& a, const CycleInfo& b) {
-                         return a.reward > b.reward;
-                     });
-            
-            if (next_beam.size() > static_cast<size_t>(beam_width_)) {
-                next_beam.resize(beam_width_);
+            // 将优先队列中的元素转移到beam中
+            beam.clear();
+            while (!next_beam_pq.empty()) {
+                beam.push_back(std::move(const_cast<CycleInfo&>(next_beam_pq.top())));
+                next_beam_pq.pop();
             }
-            
-            beam.swap(next_beam);
         }
         
         // 将该起点的所有候选周期添加到总集合中

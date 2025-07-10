@@ -109,6 +109,7 @@ void SchedulingData::_load_crews(const std::filesystem::path& file_path) {
     std::string crewId, base, stayStation;
     while(in.read_row(crewId, base, stayStation)){
         // 使用 emplace 直接在 map 中构造对象，避免额外拷贝
+        if(excluded_crew_ids_.find(crewId) != excluded_crew_ids_.end()) continue;
         crews_.emplace(crewId, Crew{crewId, base, stayStation});
     }
 }
@@ -137,7 +138,6 @@ void SchedulingData::_load_buses(const std::filesystem::path& file_path) {
     std::string id, depa, arri, td_str, ta_str;
     int flyTime;
     while(in.read_row(id, depa, arri, td_str, ta_str)) {
-        if (excluded_task_ids_.find(id) != excluded_task_ids_.end()) continue;
         buses_.emplace(id, Bus{
             id, depa, arri, 
             string_to_time_point(td_str), 
@@ -203,15 +203,6 @@ void SchedulingData::_link_ground_duties(const std::filesystem::path& file_path)
             crews_with_duties.insert(crewId);
         }
     }
-
-    // 遍历所有机组，如果该机组没有ground duty，则从 crews_ 中删除
-    // for (auto it = crews_.begin(); it != crews_.end();) {
-    //     if (crews_with_duties.find(it->first) == crews_with_duties.end()) {
-    //         it = crews_.erase(it);
-    //     } else {
-    //         ++it;
-    //     }
-    // }
 }
 
 void SchedulingData::_link_crew_qualifications(const std::filesystem::path& file_path) {
@@ -229,6 +220,19 @@ void SchedulingData::_link_crew_qualifications(const std::filesystem::path& file
             it->second.qualified_flights.insert(legId);
         }
     } 
+
+    // 删除没有资质的机组
+    size_t removed_count = 0;
+    for (auto it = crews_.begin(); it != crews_.end();) {
+        if (it->second.qualified_flights.empty()) {
+            it = crews_.erase(it);
+            removed_count++;
+        } else {
+            ++it;
+        }
+    }
+    
+    std::cout << "删除了 " << removed_count << " 个无资质机组，剩余 " << crews_.size() << " 个机组。" << std::endl;
 }
 
 void SchedulingData::_load_excluded_tasks(const std::filesystem::path& file_path) {
@@ -239,6 +243,7 @@ void SchedulingData::_load_excluded_tasks(const std::filesystem::path& file_path
     int is_ddh;
     while(in.read_row(crew_id, task_id, is_ddh)) {
         excluded_task_ids_.insert(task_id);
+        excluded_crew_ids_.insert(crew_id);
     }
 }
 

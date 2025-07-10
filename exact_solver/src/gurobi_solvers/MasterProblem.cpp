@@ -30,7 +30,7 @@ std::string MasterProblem::getMPSFilePath() const {
     std::filesystem::create_directories(mps_dir);
     
     // 返回当前迭代的MPS文件路径
-    return (mps_dir / ("master.mps")).string();
+    return (mps_dir / ("master2.mps")).string();
 }
 
 void MasterProblem::exportMPSFile() const {
@@ -235,9 +235,9 @@ void MasterProblem::solve() {
                 crew_duals_[crew_id] = constr.get(GRB_DoubleAttr_Pi);
             }
 
-             // 更新列状态并进行列管理
-            updateColumnStatus();
-            manageColumns();
+            //  // 更新列状态并进行列管理
+            // updateColumnStatus();
+            // manageColumns();
             
             iteration_count_++;
             
