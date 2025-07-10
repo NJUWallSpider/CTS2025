@@ -13,7 +13,7 @@ Solver::Solver(int argc, char* argv[]) {}
 
 void Solver::run() {    
 
-    std::string data_version = "0703";
+    std::string data_version = "0606";
     std::filesystem::path data_dir = std::filesystem::path("data") / data_version;
     const DataLoader data_loader(data_dir);
 

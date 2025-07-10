@@ -128,7 +128,7 @@ private:
     // for layover validity check
     const std::chrono::hours LAYOVER_THRESHOLD = std::chrono::hours(3);
     // when a FDP can not be extended, the probability of adding a positioning task && when the latest DP is NDP, the probability of adding a positioning task
-    const int PROBABILITY_ADD_POSITIONING = 100;
+    const int PROBABILITY_ADD_POSITIONING = 40;
     const int PROBABILITY_REQUIRE_QUALIFICATION = 100;
     const std::chrono::hours MIN_LEFT_TIME_FOR_FDUTY = std::chrono::hours(2);
     //
@@ -145,7 +145,7 @@ private:
     void action_add_duty_period();
     void action_allocate_pilot();
     void action_cycle();
-    void action_try_add_positioning(const GroundDuty& ground_duty);
+    void action_try_add_positioning(const std::variant<Flight, Bus, GroundDuty>& candidate_task);
     // ========Update State=========
     // void update_DutyPeriod(DutyPeriod& duty_period);
     void Update();
@@ -163,8 +163,9 @@ private:
     bool Check_Cycle_validity();
     bool Check_Schedule_validity();
     bool Check_LayOver_validity();
+   
     //=== 
-    void try_positioning(const Flight& flight);
+    bool try_positioning(const Flight& flight);
     GroundDuty get_lastest_ground_duty(); 
 
     //

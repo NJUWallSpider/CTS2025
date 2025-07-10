@@ -34,6 +34,7 @@ void CrewSchedule::construct_schedule_DFS() {
     int flight_count = 0;
     int bus_count = 0;
     for (const auto& flight : data_.getFlights()) {
+        // if (flight.std >= last_task_end_time_ ) {
         if (flight.depaAirport == current_airport_ && flight.std >= last_task_end_time_ ) {
             candidates.emplace_back(flight);
             flight_count++;
@@ -55,14 +56,32 @@ void CrewSchedule::construct_schedule_DFS() {
 
     std::vector<std::string> layover_spots = data_.getLayoverStations();
 
-
+    // bool maybe_the_last_flight = (duty_periods_.back().is_FDuty && duty_periods_.back().can_be_extended && duty_periods_.back().taskCount >= 2 );
+    bool maybe_the_last_flight = false;
     // Sort candidates based on the new rules
     std::sort(candidates.begin(), candidates.end(), [&](const auto& a, const auto& b) {
         
-
-  
             bool a_is_flight = std::holds_alternative<Flight>(a);
             bool b_is_flight = std::holds_alternative<Flight>(b);
+
+            // Prioritize flights that return to the crew's base
+            if(maybe_the_last_flight){
+                if (a_is_flight && b_is_flight) {
+                    const auto& flight_a = std::get<Flight>(a);
+                    const auto& flight_b = std::get<Flight>(b);
+                    bool a_returns_to_base = (flight_a.arriAirport == crew_.base);
+                    bool b_returns_to_base = (flight_b.arriAirport == crew_.base);
+                    if (a_returns_to_base != b_returns_to_base) {
+                        return a_returns_to_base;
+                    }
+                    bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), flight_a.arriAirport) != layover_spots.end();
+                    bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), flight_b.arriAirport) != layover_spots.end();
+                    if (a_is_layover != b_is_layover) {
+                        return a_is_layover;
+                    }
+                }
+            }
+
             if (a_is_flight != b_is_flight) return a_is_flight;
 
             bool a_is_bus = std::holds_alternative<Bus>(a);

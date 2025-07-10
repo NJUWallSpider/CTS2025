@@ -194,7 +194,6 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
             if(!duty_period.tasks.empty()){
                 out << "    Layover Airport:  " << get_arrival_airport(duty_period.tasks.back()) << "\n";
                 out << "    Layover Validity:  " << (get_arrival_airport(duty_period.tasks.back()) == crew_data.base || std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) != layover_spots.end() ? "Yes" : "No") << "\n";
-                NonLayover +=  std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) == layover_spots.end();
                 NonBase_layover += get_arrival_airport(duty_period.tasks.back()) != crew_data.base;
                 Invalid_layover += get_arrival_airport(duty_period.tasks.back()) != crew_data.base && std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) == layover_spots.end();
 
@@ -247,7 +246,6 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
     std::string directory = output_path.substr(0, output_path.find_last_of("/\\") + 1);
     std::ofstream out_layover_validity(directory + "layover_validity.txt");
     out_layover_validity << "Total Duty Periods: " << total_duty_periods << "\n";
-    out_layover_validity << "Total Non-Layover: " << NonLayover << "\n";
     out_layover_validity << "Total Non-Base Layover: " << NonBase_layover << "\n";
     out_layover_validity << "Total Invalid Layover: " << Invalid_layover << "\n";
     out_layover_validity << "Average Invalid Layover: " << (double)Invalid_layover / total_duty_periods << "\n";
