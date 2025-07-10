@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
         // 设置Beam搜索的宽度
         int beam_width = 50;
 
-        const int MAX_ITERATIONS = 80; // 设置最大迭代次数
+        const int MAX_ITERATIONS = 90; // 设置最大迭代次数
 
         const int NUM_THREADS = 32;  // 设置线程数
 

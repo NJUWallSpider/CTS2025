@@ -566,7 +566,7 @@ void MasterProblem::convertToIntegerProgram() {
         model_->set(GRB_DoubleParam_TimeLimit, 900);
         
         // 设置MIP Gap（例如0.01，即1%）
-        model_->set(GRB_DoubleParam_MIPGap, 0.01);
+        // model_->set(GRB_DoubleParam_MIPGap, 0.01);
         
         // 启用Gurobi输出
         model_->set(GRB_IntParam_OutputFlag, 1);

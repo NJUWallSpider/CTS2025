@@ -689,7 +689,8 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
                 const GroundDuty* closest_duty = duties_after[0];
                 int calendar_days = calculate_calendar_days(first_fdp.get_end_time(), closest_duty->start_time);
                 if (calendar_days < 2) {
-                    base_cycle.end_day_tp = day_floor(closest_duty->end_time);
+                    auto farthest_duty = duties_after.back();
+                    base_cycle.end_day_tp = day_floor(farthest_duty->end_time);
                 } else {
                     base_cycle.end_day_tp = day_floor(first_fdp.get_end_time());
                 }
@@ -704,8 +705,8 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
             auto span = std::chrono::duration_cast<std::chrono::days>(base_cycle.end_day_tp - base_cycle.start_day_tp).count() + 1;
             if (span > MAX_DAY) continue;
             
-            // 检查第一个FDP是否在base机场结束
-            if (first_fdp.get_end_airport() == base) {
+            // 检查第一个FDP
+            if (can_reach_sink[next_node_idx]) {
                 base_cycle.can_reach_sink = true;
             } 
             
@@ -867,87 +868,125 @@ std::vector<FDP> SubproblemSolver::solveLongestPathWithNetwork(
 
     if (cycles.empty()) return {};
 
-    // ====================== 优化后的周期级 DAG 最长路 =====================
-    const double NEG_INF = -1e100;
-    int n_cycles = static_cast<int>(cycles.size());
-    std::vector<double> dist(n_cycles, NEG_INF);
-    std::vector<int>    prev_idx(n_cycles, -1);
-
-    // 拓扑序：按开始日期排序
-    std::vector<int> order(n_cycles);
-    std::iota(order.begin(), order.end(), 0);
-    std::sort(order.begin(), order.end(), [&](int a, int b){
-        return cycles[a].start_day_tp < cycles[b].start_day_tp;
-    });
-
-    // 初始化：所有周期都可作为首周期
-    for (int idx = 0; idx < n_cycles; ++idx) {
-        dist[idx] = cycles[idx].reward;
-    }
-
-    // 使用基于机场的索引加速查找（关键优化）
-    std::unordered_map<std::string, std::multimap<time_point, int>> airport_start_map;
-
-    for (int idx : order) {
-        if (dist[idx] <= NEG_INF/2) continue;
-        
-        auto& cur_cycle = cycles[idx];
-        // 关键优化：查找可接续的后续周期
-        auto it_air = airport_start_map.find(cur_cycle.end_airport);
-        if (it_air != airport_start_map.end()) {
-            // 修正时间间隔判断：至少间隔2整天（原代码逻辑）
-            auto min_start = cur_cycle.end_day_tp + std::chrono::days(3);
-            auto& start_map = it_air->second;
-            auto it_low = start_map.lower_bound(min_start);
-            
-            // 遍历所有可能的后继周期
-            for (auto it = it_low; it != start_map.end(); ++it) {
-                int next_idx = it->second;
-                // 候选收益 = 当前收益 + 后继周期收益
-                double cand = dist[idx] + cycles[next_idx].reward;
-                
-                // 松弛操作
-                if (cand > dist[next_idx] + 1e-6) {
-                    dist[next_idx] = cand;
-                    prev_idx[next_idx] = idx;
-                }
+    std::vector<CycleInfo> valid_cycles;
+    // 检查周期是否从源点出发
+    for (const auto& cycle : cycles) {
+        bool is_valid = true;
+        auto [start_node_idx, a] = network.fdp_to_edge.at(cycle.fdps[0]);
+        for (const auto& edge : network.graph[start_node_idx]) {
+            if (edge.first == start_node_idx) {
+                is_valid = false;
+                break;
             }
         }
-        
-        // 将当前周期加入索引（供后续周期查找）
-        airport_start_map[cur_cycle.start_airport].insert(
-            {cur_cycle.start_day_tp, idx});
-    }
-
-    // 选择能连接到汇点的最佳周期
-    double best_total = NEG_INF;
-    int best_end = -1;
-    for (int i = 0; i < n_cycles; ++i) {
-        if (!cycles[i].can_reach_sink) continue;
-        if (dist[i] > best_total) {
-            best_total = dist[i];
-            best_end = i;
+        auto [b, end_node_idx] = network.fdp_to_edge.at(cycle.fdps.back());
+        if (!can_reach_sink[end_node_idx]) {
+            is_valid = false;
+        }
+        if (is_valid) {
+            valid_cycles.push_back(cycle);
         }
     }
 
-    if (best_end == -1 || best_total - crew_dual <= 1e-6) {
-        return {};
+    // 选择最优的周期
+    int best_idx = -1;
+    double best_reward = -1;
+    for (int i = 0; i < valid_cycles.size(); ++i) {
+        if (valid_cycles[i].reward > best_reward) {
+            best_reward = valid_cycles[i].reward;
+            best_idx = i;
+        }
     }
-
-    // 回溯
-    std::vector<int> path_indices;
-    for (int idx = best_end; idx != -1; idx = prev_idx[idx]) {
-        path_indices.push_back(idx);
-    }
-    std::reverse(path_indices.begin(), path_indices.end());
-
+    if (best_idx == -1) return {};
     std::vector<FDP> chosen_cycle;
-    for (int idx : path_indices) {
-        for (int fdp_idx : cycles[idx].fdps) {
-            if (fdp_idx == -1) continue;
-            chosen_cycle.push_back(network.sorted_fdps[fdp_idx]);
-        }
+    for (int fdp_idx : valid_cycles[best_idx].fdps) {
+        chosen_cycle.push_back(network.sorted_fdps[fdp_idx]);
     }
+    return chosen_cycle;
+    
+    // 检查周期是否能到达汇点
+
+    // // ====================== 优化后的周期级 DAG 最长路 =====================
+    // const double NEG_INF = -1e100;
+    // int n_cycles = static_cast<int>(cycles.size());
+    // std::vector<double> dist(n_cycles, NEG_INF);
+    // std::vector<int>    prev_idx(n_cycles, -1);
+
+    // // 拓扑序：按开始日期排序
+    // std::vector<int> order(n_cycles);
+    // std::iota(order.begin(), order.end(), 0);
+    // std::sort(order.begin(), order.end(), [&](int a, int b){
+    //     return cycles[a].start_day_tp < cycles[b].start_day_tp;
+    // });
+
+    // // 初始化：所有周期都可作为首周期
+    // for (int idx = 0; idx < n_cycles; ++idx) {
+    //     dist[idx] = cycles[idx].reward;
+    // }
+
+    // // 使用基于机场的索引加速查找（关键优化）
+    // std::unordered_map<std::string, std::multimap<time_point, int>> airport_start_map;
+
+    // for (int idx : order) {
+    //     if (dist[idx] <= NEG_INF/2) continue;
+        
+    //     auto& cur_cycle = cycles[idx];
+    //     // 关键优化：查找可接续的后续周期
+    //     auto it_air = airport_start_map.find(cur_cycle.end_airport);
+    //     if (it_air != airport_start_map.end()) {
+    //         // 修正时间间隔判断：至少间隔2整天（原代码逻辑）
+    //         auto min_start = cur_cycle.end_day_tp + std::chrono::days(3);
+    //         auto& start_map = it_air->second;
+    //         auto it_low = start_map.lower_bound(min_start);
+            
+    //         // 遍历所有可能的后继周期
+    //         for (auto it = it_low; it != start_map.end(); ++it) {
+    //             int next_idx = it->second;
+    //             // 候选收益 = 当前收益 + 后继周期收益
+    //             double cand = dist[idx] + cycles[next_idx].reward;
+                
+    //             // 松弛操作
+    //             if (cand > dist[next_idx] + 1e-6) {
+    //                 dist[next_idx] = cand;
+    //                 prev_idx[next_idx] = idx;
+    //             }
+    //         }
+    //     }
+        
+    //     // 将当前周期加入索引（供后续周期查找）
+    //     airport_start_map[cur_cycle.start_airport].insert(
+    //         {cur_cycle.start_day_tp, idx});
+    // }
+
+    // // 选择能连接到汇点的最佳周期
+    // double best_total = NEG_INF;
+    // int best_end = -1;
+    // for (int i = 0; i < n_cycles; ++i) {
+    //     if (!cycles[i].can_reach_sink) continue;
+    //     if (dist[i] > best_total) {
+    //         best_total = dist[i];
+    //         best_end = i;
+    //     }
+    // }
+
+    // if (best_end == -1 || best_total - crew_dual <= 1e-6) {
+    //     return {};
+    // }
+
+    // // 回溯
+    // std::vector<int> path_indices;
+    // for (int idx = best_end; idx != -1; idx = prev_idx[idx]) {
+    //     path_indices.push_back(idx);
+    // }
+    // std::reverse(path_indices.begin(), path_indices.end());
+
+    // std::vector<FDP> chosen_cycle;
+    // for (int idx : path_indices) {
+    //     for (int fdp_idx : cycles[idx].fdps) {
+    //         if (fdp_idx == -1) continue;
+    //         chosen_cycle.push_back(network.sorted_fdps[fdp_idx]);
+    //     }
+    // }
     return chosen_cycle;
 }
 
