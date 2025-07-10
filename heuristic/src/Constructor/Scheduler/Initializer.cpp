@@ -13,8 +13,9 @@
 void CrewSchedule::initialize_crew_state() {
     // 1. Initialize time and location
     current_airport_ = crew_.initialStayStation;
-    
-    time_t start_time_t = Utils::parseTime(start_str);
+  
+
+    time_t start_time_t = Utils::parseTime(start_str_);
     last_task_end_time_ = std::chrono::system_clock::from_time_t(start_time_t)+ std::chrono::hours(8);
 
     // 2. Create and initialize a new duty period

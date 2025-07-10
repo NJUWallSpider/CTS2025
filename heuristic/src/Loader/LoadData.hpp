@@ -39,6 +39,7 @@ struct Flight{
     ///
     int is_assigned;
     std::string assigned_crew_id;
+    std::vector<std::string> flight_to_crews;
 };
 
 struct Bus{
@@ -119,13 +120,14 @@ public:
     const std::vector<Bus>& getBuses() const { return buses_; }
     const std::map<std::pair<std::string, std::string>, std::vector<int>>& getRouteIndex() const { return route_to_legs_index_; }
     const std::vector<std::string>& getLayoverStations() const { return layover_stations_; }
-
+    const std::map<std::string, std::vector<std::string>>& getFlightToCrews() const { return flight_to_crews_; }
     static TimePoint string_to_time_point(const std::string& time_str);
 
 private:
     // --- 成员变量 ---
     std::map<std::string, Crew> crews_;
     // std::vector<Leg> schedulable_legs_; // 已排序并分配好rnum
+    std::map<std::string, std::vector<std::string>> flight_to_crews_;
     std::vector<Flight> flights_;
     std::vector<Bus> buses_;
     std::vector<std::string> layover_stations_;

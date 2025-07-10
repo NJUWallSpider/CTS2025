@@ -94,6 +94,10 @@ void CrewSchedule::action_add_bus(const Bus& bus){
             // add the bus to the last duty period
             last_duty_period.tasks.emplace_back(bus);
         }
+        // the bus is a positioning task
+        else{
+            last_duty_period.tasks.emplace_back(bus);
+        }
     }
         
     // if the lastest duty period is a FDuty and not extendable
@@ -272,7 +276,7 @@ void CrewSchedule::action_cycle(){
 }
 
 
-void CrewSchedule::action_try_add_positioning(const GroundDuty& ground_duty){
+void CrewSchedule::action_try_add_positioning(const std::variant<Flight, Bus, GroundDuty>& candidate_task){
     DutyPeriod& last_duty_period = duty_periods_.back();
     if(last_duty_period.is_FDuty){
         // get the lastest task
@@ -282,12 +286,13 @@ void CrewSchedule::action_try_add_positioning(const GroundDuty& ground_duty){
             // get the flight
             Flight& flight = std::get<Flight>(lastest_task);
             // when the spot connection is not met ..., A]  (A->B) [B
-            if(flight.arriAirport != ground_duty.airport){
+            if(flight.arriAirport != get_arrival_airport(candidate_task)){
                 // firstly, try to find a BUS (A->B) 
                 for(const auto& bus : data_.getBuses()){
-                    if(bus.depaAirport == flight.arriAirport && bus.arriAirport == ground_duty.airport && bus.td >= flight.sta && bus.ta <= ground_duty.start_time){
+                    if(bus.depaAirport == flight.arriAirport && bus.arriAirport == get_arrival_airport(candidate_task) && bus.td >= flight.sta && bus.ta <= get_start_time(candidate_task)){
                             // add the first found bus to the last duty period
                             action_add_bus(bus);
+                            Update_DutyPeriod();
                             return;
                         
                     }

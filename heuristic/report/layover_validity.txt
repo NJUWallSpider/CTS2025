@@ -1,5 +1,12 @@
+<<<<<<< HEAD
 Total Duty Periods: 1468
 Total Non-Layover: 264
 Total Non-Base Layover: 1142
 Total Invalid Layover: 264
 Average Invalid Layover: 0.179837
+=======
+Total Duty Periods: 1676
+Total Non-Base Layover: 1300
+Total Invalid Layover: 210
+Average Invalid Layover: 0.125298
+>>>>>>> origin/Heuristic-SA

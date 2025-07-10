@@ -6,6 +6,8 @@
 #include <string>
 #include <variant>
 #include <chrono>
+#include <limits>
+#include <unordered_set>
 
 struct SolutionState; // Forward Declaration
 
@@ -92,7 +94,10 @@ private:
     const Crew& crew_;
     std::vector<DutyPeriod>& duty_periods_; // List of duty periods for rule checking
     std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments;
+    
     std::vector<Cycle>& cycles_; // List of cycles for rule checking
+    /////
+    std::string start_str_;
 
 
     
@@ -103,6 +108,7 @@ private:
     // --- Member Variables ---
     std::string current_airport_;
     TimePoint last_task_end_time_;
+    std::unordered_set<std::string> all_bases_;
     
     // --- Rule Constants ---
     // duty period level
@@ -141,7 +147,7 @@ private:
     void action_add_duty_period();
     void action_allocate_pilot();
     void action_cycle();
-    void action_try_add_positioning(const GroundDuty& ground_duty);
+    void action_try_add_positioning(const std::variant<Flight, Bus, GroundDuty>& candidate_task);
     // ========Update State=========
     // void update_DutyPeriod(DutyPeriod& duty_period);
     void Update();
@@ -159,8 +165,9 @@ private:
     bool Check_Cycle_validity();
     bool Check_Schedule_validity();
     bool Check_LayOver_validity();
+   
     //=== 
-    void try_positioning(const Flight& flight);
+    bool try_positioning(const Flight& flight);
     GroundDuty get_lastest_ground_duty(); 
 
     //
