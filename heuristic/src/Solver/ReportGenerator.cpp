@@ -255,6 +255,7 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
 }
 
 void ReportGenerator::generate_submission_csv(const SolutionState& solution, const std::string& output_path) {
+
     std::ofstream out(output_path);
     if (!out) {
         std::cerr << "Error: Could not open file " << output_path << " for writing." << std::endl;

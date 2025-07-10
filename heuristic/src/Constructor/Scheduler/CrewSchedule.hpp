@@ -76,13 +76,16 @@ public:
     explicit CrewSchedule(const DataLoader& data, const Crew& crew, 
             std::vector<DutyPeriod>& crew_duty_periods, 
             std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments,
-            std::vector<Cycle>& cycles);
+            std::vector<Cycle>& cycles,
+            std::string start_str);
 
     // 核心构造流程
     void assign_tasks_to_crew();
 
     // Main construction method
     void construct_schedule_DFS();
+
+    std::string start_str;
 
 private:
     const DataLoader& data_; 

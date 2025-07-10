@@ -17,7 +17,7 @@
 #include <functional>
 #include <set>
 
-SolutionConstructor::SolutionConstructor(const DataLoader& data) : data_(data) {}
+SolutionConstructor::SolutionConstructor(const DataLoader& data, std::string start_str) : data_(data), start_str(start_str) {}
 
 SolutionState SolutionConstructor::generate_schedule() {
     SolutionState solution;
@@ -98,7 +98,8 @@ SolutionState SolutionConstructor::generate_schedule() {
         CrewSchedule crew_schedule_builder(data_, crew, 
         solution.crew_dutyperiods[crew.id], 
         solution.flight_assignments,
-        solution.crew_cycles[crew.id]);
+        solution.crew_cycles[crew.id],
+        start_str);
 
         crew_schedule_builder.construct_schedule_DFS();
 
@@ -239,7 +240,8 @@ void SolutionConstructor::recreate_solution(SolutionState& solution, const std::
             CrewSchedule crew_schedule_builder(data_, crew, 
                 solution.crew_dutyperiods[crew_id], 
                 solution.flight_assignments,
-                solution.crew_cycles[crew_id]);
+                solution.crew_cycles[crew_id],
+                start_str);
             
             // 为该机长构建新的调度
             crew_schedule_builder.construct_schedule_DFS();

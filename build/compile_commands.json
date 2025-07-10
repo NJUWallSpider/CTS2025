@@ -1,0 +1,38 @@
+[
+{
+  "directory": "/home/ubuntu/new-cts/build",
+  "command": "/usr/bin/g++ -I/opt/gurobi1202/linux64/include -g -std=gnu++23 -o CMakeFiles/ExactSolver.dir/data_model/PairingGenerator.cpp.o -c /home/ubuntu/new-cts/exact_solver/src/data_model/PairingGenerator.cpp",
+  "file": "/home/ubuntu/new-cts/exact_solver/src/data_model/PairingGenerator.cpp",
+  "output": "CMakeFiles/ExactSolver.dir/data_model/PairingGenerator.cpp.o"
+},
+{
+  "directory": "/home/ubuntu/new-cts/build",
+  "command": "/usr/bin/g++ -I/opt/gurobi1202/linux64/include -g -std=gnu++23 -o CMakeFiles/ExactSolver.dir/data_model/ReportGenerator.cpp.o -c /home/ubuntu/new-cts/exact_solver/src/data_model/ReportGenerator.cpp",
+  "file": "/home/ubuntu/new-cts/exact_solver/src/data_model/ReportGenerator.cpp",
+  "output": "CMakeFiles/ExactSolver.dir/data_model/ReportGenerator.cpp.o"
+},
+{
+  "directory": "/home/ubuntu/new-cts/build",
+  "command": "/usr/bin/g++ -I/opt/gurobi1202/linux64/include -g -std=gnu++23 -o CMakeFiles/ExactSolver.dir/data_model/ShcedulingData.cpp.o -c /home/ubuntu/new-cts/exact_solver/src/data_model/ShcedulingData.cpp",
+  "file": "/home/ubuntu/new-cts/exact_solver/src/data_model/ShcedulingData.cpp",
+  "output": "CMakeFiles/ExactSolver.dir/data_model/ShcedulingData.cpp.o"
+},
+{
+  "directory": "/home/ubuntu/new-cts/build",
+  "command": "/usr/bin/g++ -I/opt/gurobi1202/linux64/include -g -std=gnu++23 -o CMakeFiles/ExactSolver.dir/gurobi_solvers/MasterProblem.cpp.o -c /home/ubuntu/new-cts/exact_solver/src/gurobi_solvers/MasterProblem.cpp",
+  "file": "/home/ubuntu/new-cts/exact_solver/src/gurobi_solvers/MasterProblem.cpp",
+  "output": "CMakeFiles/ExactSolver.dir/gurobi_solvers/MasterProblem.cpp.o"
+},
+{
+  "directory": "/home/ubuntu/new-cts/build",
+  "command": "/usr/bin/g++ -I/opt/gurobi1202/linux64/include -g -std=gnu++23 -o CMakeFiles/ExactSolver.dir/main.cpp.o -c /home/ubuntu/new-cts/exact_solver/src/main.cpp",
+  "file": "/home/ubuntu/new-cts/exact_solver/src/main.cpp",
+  "output": "CMakeFiles/ExactSolver.dir/main.cpp.o"
+},
+{
+  "directory": "/home/ubuntu/new-cts/build",
+  "command": "/usr/bin/g++ -I/opt/gurobi1202/linux64/include -g -std=gnu++23 -o CMakeFiles/ExactSolver.dir/subproblem/SubproblemSolver.cpp.o -c /home/ubuntu/new-cts/exact_solver/src/subproblem/SubproblemSolver.cpp",
+  "file": "/home/ubuntu/new-cts/exact_solver/src/subproblem/SubproblemSolver.cpp",
+  "output": "CMakeFiles/ExactSolver.dir/subproblem/SubproblemSolver.cpp.o"
+}
+]

@@ -13,7 +13,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # --- 定义可执行文件 ---
 # 定义一个变量来存储你的可执行文件名，方便重用
-set(EXECUTABLE_NAME Heuristic)
+set(EXECUTABLE_NAME heuristic)
 
 # 主程序
 # 收集指定目录下的所有源文件

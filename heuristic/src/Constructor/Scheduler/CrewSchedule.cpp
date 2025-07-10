@@ -14,8 +14,8 @@
 
 
 CrewSchedule::CrewSchedule(const DataLoader& data, const Crew& crew, std::vector<DutyPeriod>& crew_duty_periods, std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments,
-std::vector<Cycle>& cycles)
-    : data_(data), crew_(crew), duty_periods_(crew_duty_periods), flight_assignments(flight_assignments), cycles_(cycles) {
+std::vector<Cycle>& cycles, std::string start_str)
+    : data_(data), crew_(crew), duty_periods_(crew_duty_periods), flight_assignments(flight_assignments), cycles_(cycles), start_str(start_str) {
     initialize_crew_state();
 }
 

@@ -109,7 +109,7 @@ struct Crew {
  */
 class DataLoader {
 public:
-    explicit DataLoader(const std::filesystem::path& data_path);
+    explicit DataLoader(const std::filesystem::path& data_path, const std::filesystem::path& heuristic_path);
 
     // --- 公共访问接口 ---
     const std::map<std::string, Crew>& getCrews() const { return crews_; }
@@ -132,6 +132,8 @@ private:
     // Maps a route (departure airport, arrival airport) to a list of leg indices that connect those airports
     std::map<std::pair<std::string, std::string>, std::vector<int>> route_to_legs_index_;
 
+    std::unordered_set<std::string> excluded_task_ids_;
+    std::unordered_set<std::string> excluded_crew_ids_;
 
     // --- 私有加载函数 ---
     void _load_crews(const std::filesystem::path& file_path);
@@ -140,6 +142,7 @@ private:
     void _load_layover_stations(const std::filesystem::path& file_path);
     void _load_and_link_ground_duties(const std::filesystem::path& file_path);
     void _link_crew_qualifications(const std::filesystem::path& file_path);
+    void _load_excluded_tasks(const std::filesystem::path& file_path);
 };
 
 

@@ -32,7 +32,7 @@ public:
      * @brief Constructor
      * @param data All of the data loaded
      */
-    explicit SolutionConstructor(const DataLoader& data);
+    explicit SolutionConstructor(const DataLoader& data, std::string start_str);
 
     // Generates a new, complete schedule.
     SolutionState generate_schedule();
@@ -63,8 +63,12 @@ public:
         double initial_ruin_percentage = 0.05
     );
 
+    std::string start_str;
+
 private:
     const DataLoader& data_; // Holds a const reference to the original data
+
+    
     
     // 破坏阶段：移除部分机长的排班
     void ruin_solution(SolutionState& solution, const std::vector<std::string>& selected_crews);
