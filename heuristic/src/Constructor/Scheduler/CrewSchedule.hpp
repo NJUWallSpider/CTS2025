@@ -166,6 +166,7 @@ private:
    
     //=== 
     bool try_positioning(const Flight& flight);
+    void try_position2Layover();
     GroundDuty get_lastest_ground_duty(); 
 
     //

@@ -1,4 +1,6 @@
-Total Duty Periods: 1676
-Total Non-Base Layover: 1300
-Total Invalid Layover: 210
-Average Invalid Layover: 0.125298
+Total Duty Periods: 925
+Total Non-Base Layover: 760
+Total Invalid Layover: 16
+Invalid Layover Set Size: 7
+Invalid Layover Set: XBQP XTNT QPCR GSWW QFKO CFEV VNDG 
+Average Invalid Layover: 0.0172973

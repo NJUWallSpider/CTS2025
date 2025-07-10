@@ -110,3 +110,33 @@ void CrewSchedule::Update_Cycle(){
     // 3. update the cycle can_be_extended flag
     // if the calendar days of the cycle is less than 4, then the cycle can be extended
 }
+
+// void CrewSchedule::try_position2Layover(){
+//     DutyPeriod& last_duty_period = duty_periods_.back();
+
+//     // get the lastest task
+//     std::variant<Flight, Bus, GroundDuty>& lastest_task = last_duty_period.tasks.back();
+//     auto layover_spots = data_.getLayoverStations();
+//     // firstly, try to find a BUS (A->B) 
+//     for(const auto& bus : data_.getBuses()){
+
+//         if(bus.depaAirport == current_airport_ && std::find(layover_spots.begin(), layover_spots.end(), bus.arriAirport) != layover_spots.end() && bus.td >= last_task_end_time_ && bus.ta <= get_start_time(flight)){
+//                 // add the first found bus to the last duty period
+//                 if(Check_ddh_Bus_validity(bus)){
+//                     action_add_bus(bus);
+//                     // 1. update the last task end time
+//                     last_task_end_time_ = get_end_time(duty_periods_.back().tasks.back());
+//                     // 2. update the current airport
+//                     current_airport_ = get_arrival_airport(duty_periods_.back().tasks.back());
+//                     Update_DutyPeriod();
+//                     return true;
+//                 }
+//         }
+
+        
+//     }
+//     return false;
+
+        
+    
+// }

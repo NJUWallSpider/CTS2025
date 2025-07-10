@@ -17,7 +17,9 @@
 #include <functional>
 #include <set>
 
-SolutionConstructor::SolutionConstructor(const DataLoader& data) : data_(data) {}
+SolutionConstructor::SolutionConstructor(const DataLoader& data) : data_(data) {
+    data_version_ = data.getDataVersion();
+}
 
 SolutionState SolutionConstructor::generate_schedule() {
     SolutionState solution;
@@ -382,9 +384,9 @@ void SolutionConstructor::thread_worker(
                                       << " 找到新的全局最优解，分数: " << global_best_solution.score 
                                       << ", 迭代: " << global_iteration_counter.load() 
                                       << ", 温度: " << temperature << std::endl;
-                                ReportGenerator::generate_schedule_report(global_best_solution, data_, "heuristic/report/schedule_report.txt", std::chrono::steady_clock::now());
-                                ReportGenerator::generate_submission_csv(global_best_solution, "heuristic/report/rosterResult.csv");
-                                ReportGenerator::validate_crew_flight_consistency(global_best_solution, "heuristic/report/crew_flight_consistency.txt");
+                                ReportGenerator::generate_schedule_report(global_best_solution, data_, "heuristic/report/" + data_version_ + "/schedule_report.txt", std::chrono::steady_clock::now());
+                                ReportGenerator::generate_submission_csv(global_best_solution, "heuristic/report/" + data_version_ + "/rosterResult.csv");
+                                ReportGenerator::validate_crew_flight_consistency(global_best_solution, "heuristic/report/" + data_version_ + "/crew_flight_consistency.txt");
 
                         }
                     }

@@ -60,47 +60,38 @@ void CrewSchedule::construct_schedule_DFS() {
     bool maybe_the_last_flight = false;
     // Sort candidates based on the new rules
     std::sort(candidates.begin(), candidates.end(), [&](const auto& a, const auto& b) {
-        
-            bool a_is_flight = std::holds_alternative<Flight>(a);
-            bool b_is_flight = std::holds_alternative<Flight>(b);
+        auto get_priority = [&](const std::variant<Flight, Bus, GroundDuty>& task) {
+            if (std::holds_alternative<Flight>(task)) {
+                const auto& flight = std::get<Flight>(task);
+                if (flight.std - last_task_end_time_ <= std::chrono::hours(12)) {
+                    return 1; // 1. the flights depart within 12 hours from the last task
+                } else {
+                    return 4; // 4. other flights
+                }
+            } else if (std::holds_alternative<Bus>(task)) {
+                const auto& bus = std::get<Bus>(task);
+                bool arrives_within_12_hours = bus.ta - last_task_end_time_ <= std::chrono::hours(12);
 
-            // Prioritize flights that return to the crew's base
-            if(maybe_the_last_flight){
-                if (a_is_flight && b_is_flight) {
-                    const auto& flight_a = std::get<Flight>(a);
-                    const auto& flight_b = std::get<Flight>(b);
-                    bool a_returns_to_base = (flight_a.arriAirport == crew_.base);
-                    bool b_returns_to_base = (flight_b.arriAirport == crew_.base);
-                    if (a_returns_to_base != b_returns_to_base) {
-                        return a_returns_to_base;
+                if (arrives_within_12_hours) {
+                    if (bus.arriAirport == crew_.base) {
+                        return 2; // 2. the buses that arrive at the crew's base within 12 hours from the last task
                     }
-                    bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), flight_a.arriAirport) != layover_spots.end();
-                    bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), flight_b.arriAirport) != layover_spots.end();
-                    if (a_is_layover != b_is_layover) {
-                        return a_is_layover;
+                    if (std::find(layover_spots.begin(), layover_spots.end(), bus.arriAirport) != layover_spots.end()) {
+                        return 3; // 3. the buses arrive at a valid layover station within 12 hours from the last task
                     }
                 }
+                return 5; // 5. other buses
             }
+            return 6; // Lowest priority for any other type
+        };
 
-            if (a_is_flight != b_is_flight) return a_is_flight;
+        int priority_a = get_priority(a);
+        int priority_b = get_priority(b);
 
-            bool a_is_bus = std::holds_alternative<Bus>(a);
-            bool b_is_bus = std::holds_alternative<Bus>(b);
+        if (priority_a != priority_b) {
+            return priority_a < priority_b;
+        }
 
-            if (a_is_bus && !b_is_bus) return true;  // a (bus) comes before b (flight)
-            if (!a_is_bus && b_is_bus) return false; // b (bus) comes before a (flight)
-
-            if (a_is_bus && b_is_bus) {
-                const auto& bus_a = std::get<Bus>(a);
-                const auto& bus_b = std::get<Bus>(b);
-                bool a_to_hub = all_bases_.count(bus_a.arriAirport) > 0;
-                bool b_to_hub = all_bases_.count(bus_b.arriAirport) > 0;
-                if (a_to_hub != b_to_hub) {
-                    return a_to_hub; // Prioritize hub destination
-                }
-            }
-    
-        
         return get_start_time(a) < get_start_time(b);
     });
 

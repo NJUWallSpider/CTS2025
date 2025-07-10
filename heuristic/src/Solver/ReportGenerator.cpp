@@ -9,6 +9,7 @@
 #include <sstream>
 #include <algorithm>
 #include <set>
+#include <unordered_set>
 
 bool ReportGenerator::validate_crew_flight_consistency(const SolutionState& solution, const std::string& output_path) {
     std::ofstream out(output_path);
@@ -171,6 +172,7 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
     int total_duty_periods = 0;
     int NonBase_layover = 0;
     int Invalid_layover = 0;
+    std::unordered_set<std::string> Invalid_layover_set;
     for (const auto& [crew_id, duty_periods] : solution.crew_dutyperiods) {
         if (all_crews.find(crew_id) == all_crews.end()) continue;
         const auto& crew_data = all_crews.at(crew_id);
@@ -195,8 +197,10 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
                 out << "    Layover Airport:  " << get_arrival_airport(duty_period.tasks.back()) << "\n";
                 out << "    Layover Validity:  " << (get_arrival_airport(duty_period.tasks.back()) == crew_data.base || std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) != layover_spots.end() ? "Yes" : "No") << "\n";
                 NonBase_layover += get_arrival_airport(duty_period.tasks.back()) != crew_data.base;
-                Invalid_layover += get_arrival_airport(duty_period.tasks.back()) != crew_data.base && std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) == layover_spots.end();
-
+                if(std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) == layover_spots.end()){
+                    Invalid_layover++;
+                    Invalid_layover_set.insert(get_arrival_airport(duty_period.tasks.back()));
+                }
             }
             total_duty_periods++;
             auto sorted_tasks = duty_period.tasks;
@@ -248,6 +252,12 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
     out_layover_validity << "Total Duty Periods: " << total_duty_periods << "\n";
     out_layover_validity << "Total Non-Base Layover: " << NonBase_layover << "\n";
     out_layover_validity << "Total Invalid Layover: " << Invalid_layover << "\n";
+    out_layover_validity << "Invalid Layover Set Size: " << Invalid_layover_set.size() << "\n";
+    out_layover_validity << "Invalid Layover Set: ";
+    for(const auto& layover : Invalid_layover_set){
+        out_layover_validity << layover << " ";
+    }
+    out_layover_validity << "\n";
     out_layover_validity << "Average Invalid Layover: " << (double)Invalid_layover / total_duty_periods << "\n";
     std::cout << "Schedule report generated at " << output_path << std::endl;
 }

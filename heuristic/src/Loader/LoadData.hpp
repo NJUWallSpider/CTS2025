@@ -110,7 +110,7 @@ struct Crew {
  */
 class DataLoader {
 public:
-    explicit DataLoader(const std::filesystem::path& data_path);
+    explicit DataLoader(const std::filesystem::path& data_path, const std::string& data_version);
 
     // --- 公共访问接口 ---
     const std::map<std::string, Crew>& getCrews() const { return crews_; }
@@ -122,7 +122,7 @@ public:
     const std::vector<std::string>& getLayoverStations() const { return layover_stations_; }
     const std::map<std::string, std::vector<std::string>>& getFlightToCrews() const { return flight_to_crews_; }
     static TimePoint string_to_time_point(const std::string& time_str);
-
+    std::string getDataVersion() const { return data_version_; }
 private:
     // --- 成员变量 ---
     std::map<std::string, Crew> crews_;
@@ -131,6 +131,7 @@ private:
     std::vector<Flight> flights_;
     std::vector<Bus> buses_;
     std::vector<std::string> layover_stations_;
+    std::string data_version_;
     // Maps a route (departure airport, arrival airport) to a list of leg indices that connect those airports
     std::map<std::pair<std::string, std::string>, std::vector<int>> route_to_legs_index_;
 

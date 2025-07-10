@@ -65,6 +65,7 @@ public:
 
 private:
     const DataLoader& data_; // Holds a const reference to the original data
+    std::string data_version_;
     
     
     // 破坏阶段：移除部分机长的排班

@@ -195,14 +195,14 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
     }
     // If the lastest duty period is a NFDuty
     else if(!lastest_duty_period.is_FDuty){
+        if(duty_periods_.size() < 2){
+            return true;
+        }
         if(candidate_flight.std - lastest_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
             return true;
         }
-        else{
-            if(candidate_flight.sta - lastest_duty_period.startTime < MAX_DUTY_TIME_PER_FLIGHT_DUTY && candidate_flight.std - lastest_duty_period.endTime > MIN_CONNECTION_TIME_BUS){
-                if(duty_periods_.size() < 2){
-                    return true;
-                }
+        else if(candidate_flight.sta - lastest_duty_period.startTime < MAX_DUTY_TIME_PER_FLIGHT_DUTY && candidate_flight.std - lastest_duty_period.endTime > MIN_CONNECTION_TIME_BUS){
+                
                 const auto& second_lastest_duty_period = duty_periods_[duty_periods_.size() - 2];
                 if(lastest_duty_period.startTime - get_end_time(second_lastest_duty_period.tasks.back()) < MIN_REST_BEFORE_FDUTY){
                     return false;
@@ -211,10 +211,10 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
                     return true;
                 }
             }
-            else{
-                return false;  }
+        else{
+            return false;  }
 
-        }
+        
     }
     return true;
 }

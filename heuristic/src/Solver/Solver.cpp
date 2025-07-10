@@ -13,9 +13,9 @@ Solver::Solver(int argc, char* argv[]) {}
 
 void Solver::run() {    
 
-    std::string data_version = "0606";
+    std::string data_version = "0703";
     std::filesystem::path data_dir = std::filesystem::path("data") / data_version;
-    const DataLoader data_loader(data_dir);
+    const DataLoader data_loader(data_dir, data_version);
 
     SolutionConstructor solution_constructor(data_loader);
     SolutionState best_solution;

@@ -15,7 +15,7 @@ TimePoint DataLoader::string_to_time_point(const std::string& time_str) {
 }
 
 // 构造函数，调度所有加载操作
-DataLoader::DataLoader(const std::filesystem::path& data_path) {
+DataLoader::DataLoader(const std::filesystem::path& data_path, const std::string& data_version) {
     std::cout << "开始加载数据..." << std::endl;
 
     _load_crews(data_path / "crew.csv");
