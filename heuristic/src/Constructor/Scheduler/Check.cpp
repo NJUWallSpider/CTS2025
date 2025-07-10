@@ -176,6 +176,9 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
 
         // // check the layover validity (using a threshold)
         // if( lastest_duty_period.taskCount >= 2){
+        //     // if(candidate_flight.arriAirport != crew_.base){
+        //     //     return false;
+        //     // }
         //     std::vector<std::string> layover_spots = data_.getLayoverStations();
         //     if(std::find(layover_spots.begin(), layover_spots.end(), candidate_flight.arriAirport) == layover_spots.end()){
         //         return false;
@@ -238,6 +241,9 @@ bool CrewSchedule::Check_ddh_Bus_validity(const Bus& candidate_bus){
             return true;
         }
         else if(candidate_bus.td - latest_duty_period.endTime >= MIN_CONNECTION_TIME_BUS){
+            // if(candidate_bus.arriAirport != crew_.base){
+            //     return false;
+            // }
             if(std::find(layover_spots.begin(), layover_spots.end(), candidate_bus.arriAirport) == layover_spots.end()){
                 return false;
             }
@@ -333,7 +339,7 @@ bool CrewSchedule::Check_Schedule_validity(){
     return true;
 }
 
-bool CrewSchedule::Check_LayOver_validity(){
+bool CrewSchedule::Check_Layover_validity(){
     
     std::vector<std::string> layover_spots = data_.getLayoverStations();
     // get the last unextendable duty period
@@ -344,7 +350,18 @@ bool CrewSchedule::Check_LayOver_validity(){
     if(last_unextendable_duty_period != duty_periods_.rend()){
         if (!last_unextendable_duty_period->tasks.empty()) {
             const auto& last_end_airport = get_arrival_airport(last_unextendable_duty_period->tasks.back());
-                    if(std::find(layover_spots.begin(), layover_spots.end(), last_end_airport) == layover_spots.end() || crew_.base != last_end_airport) return false;
+            if(std::find(layover_spots.begin(), layover_spots.end(), last_end_airport) == layover_spots.end() ) {
+                return false;
+            }
+            if(last_end_airport != crew_.base){
+                // possibility
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                std::uniform_int_distribution<> dis(0, 99);
+                if(dis(gen) < PROBABILITY_REJECT_NON_BASE_LAYOVER){
+                    return false;
+                }
+            }
     
         } 
     }
@@ -480,4 +497,29 @@ TimePoint CrewSchedule::get_rest_start_point(){
     }
 
     return rest_start_time;
+}
+
+bool CrewSchedule::detect_flt_behind(const Flight& candidate_flight){
+    std::vector<Flight> next_candidates;
+    auto flight_assignments = get_flight_assignments();
+    DutyPeriod& lastest_duty_period = duty_periods_.back();
+    for (const auto& flight : data_.getFlights()) {
+        // if (flight.std >= last_task_end_time_ ) {
+        if (flight.depaAirport == candidate_flight.arriAirport && flight.std > candidate_flight.sta + MIN_CONNECTION_TIME_FLIGHT && flight_assignments.find(flight.id) == flight_assignments.end()){
+            if(flight.sta - lastest_duty_period.startTime < MAX_DUTY_TIME_PER_FLIGHT_DUTY && std::chrono::minutes(flight.flyTime_mins + candidate_flight.flyTime_mins) + lastest_duty_period.total_flight_time <= MAX_FLY_TIME_PER_DUTY && lastest_duty_period.flightCount + 1 < MAX_FLIGHTS_PER_FDUTY){
+                return  true;
+            }
+        }
+    }
+    return false;
+}
+
+bool CrewSchedule::try_position2Layover(const Flight& candidate_flight){
+    std::vector<Bus> next_buses;
+    for(const auto& bus : data_.getBuses()){
+        if(bus.depaAirport == candidate_flight.arriAirport && bus.arriAirport == candidate_flight.depaAirport && bus.td >= last_task_end_time_ && bus.ta <= get_start_time(candidate_flight)){
+            next_buses.emplace_back(bus);
+        }
+    }
+    return false;
 }

@@ -85,7 +85,10 @@ public:
     void assign_tasks_to_crew();
 
     // Main construction method
-    void construct_schedule_DFS();
+    // void construct_schedule_DFS();
+    bool construct_schedule_DFS();
+
+    std::map<std::string, std::vector<std::pair<std::string, bool>>> get_flight_assignments(){ return flight_assignments;}
 
 private:
     const DataLoader& data_; 
@@ -130,6 +133,7 @@ private:
     // when a FDP can not be extended, the probability of adding a positioning task && when the latest DP is NDP, the probability of adding a positioning task
     const int PROBABILITY_ADD_POSITIONING = 40;
     const int PROBABILITY_REQUIRE_QUALIFICATION = 100;
+    const int PROBABILITY_REJECT_NON_BASE_LAYOVER = 100;
     const std::chrono::hours MIN_LEFT_TIME_FOR_FDUTY = std::chrono::hours(2);
     //
 
@@ -162,11 +166,13 @@ private:
     // Cycle Level 
     bool Check_Cycle_validity();
     bool Check_Schedule_validity();
-    bool Check_LayOver_validity();
+    bool Check_Layover_validity();
+
+    bool detect_flt_behind(const Flight& flight);
    
     //=== 
     bool try_positioning(const Flight& flight);
-    void try_position2Layover();
+    bool try_position2Layover(const Flight& flight);
     GroundDuty get_lastest_ground_duty(); 
 
     //
