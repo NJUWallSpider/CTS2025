@@ -13,12 +13,12 @@ Solver::Solver(int argc, char* argv[]) {}
 
 void Solver::run() {    
 
-    std::string data_version = "0606";
+    std::string data_version = "0711";
     std::filesystem::path data_dir = std::filesystem::path("data") / data_version;
     // std::filesystem::path heuristic_path = std::filesystem::path("exact_solver") / "report" / data_version / "rosterResult.csv";
-    std::filesystem::path heuristic_path = std::filesystem::path("/home/ubuntu/new-cts/empty_submission.csv");
+    std::filesystem::path heuristic_path = std::filesystem::path("/home/dbxp/new-cts/empty_submission.csv");
     const DataLoader data_loader(data_dir, heuristic_path);
-    std::string start_str = "2024/5/29 00:00";
+    std::string start_str = "2025/1/31 00:00";
 
     SolutionConstructor solution_constructor(data_loader, start_str);
     SolutionState best_solution;
@@ -47,7 +47,7 @@ void Solver::run() {
     }
     
     // 模拟退火参数
-    int num_paths = 32;                // 探索路径数量
+    int num_paths = 16;                // 探索路径数量
     int num_threads = available_threads; // 使用的线程数
     int max_iterations = 16000;        // 最大迭代次数
     double initial_temperature = 1400.0; // 初始温度

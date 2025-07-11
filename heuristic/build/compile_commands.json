@@ -1,62 +1,52 @@
 [
 {
-  "directory": "/home/ubuntu/new-cts/heuristic/build",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/Scheduler/Action.cpp.o -c /home/ubuntu/new-cts/heuristic/src/Constructor/Scheduler/Action.cpp",
-  "file": "/home/ubuntu/new-cts/heuristic/src/Constructor/Scheduler/Action.cpp",
-  "output": "CMakeFiles/heuristic.dir/Constructor/Scheduler/Action.cpp.o"
+  "directory": "/home/dbxp/new-cts/heuristic/build",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/Scheduler/Action.cpp.o -c /home/dbxp/new-cts/heuristic/src/Constructor/Scheduler/Action.cpp",
+  "file": "/home/dbxp/new-cts/heuristic/src/Constructor/Scheduler/Action.cpp"
 },
 {
-  "directory": "/home/ubuntu/new-cts/heuristic/build",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/Scheduler/Check.cpp.o -c /home/ubuntu/new-cts/heuristic/src/Constructor/Scheduler/Check.cpp",
-  "file": "/home/ubuntu/new-cts/heuristic/src/Constructor/Scheduler/Check.cpp",
-  "output": "CMakeFiles/heuristic.dir/Constructor/Scheduler/Check.cpp.o"
+  "directory": "/home/dbxp/new-cts/heuristic/build",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/Scheduler/Check.cpp.o -c /home/dbxp/new-cts/heuristic/src/Constructor/Scheduler/Check.cpp",
+  "file": "/home/dbxp/new-cts/heuristic/src/Constructor/Scheduler/Check.cpp"
 },
 {
-  "directory": "/home/ubuntu/new-cts/heuristic/build",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/Scheduler/CrewSchedule.cpp.o -c /home/ubuntu/new-cts/heuristic/src/Constructor/Scheduler/CrewSchedule.cpp",
-  "file": "/home/ubuntu/new-cts/heuristic/src/Constructor/Scheduler/CrewSchedule.cpp",
-  "output": "CMakeFiles/heuristic.dir/Constructor/Scheduler/CrewSchedule.cpp.o"
+  "directory": "/home/dbxp/new-cts/heuristic/build",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/Scheduler/CrewSchedule.cpp.o -c /home/dbxp/new-cts/heuristic/src/Constructor/Scheduler/CrewSchedule.cpp",
+  "file": "/home/dbxp/new-cts/heuristic/src/Constructor/Scheduler/CrewSchedule.cpp"
 },
 {
-  "directory": "/home/ubuntu/new-cts/heuristic/build",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/Scheduler/Initializer.cpp.o -c /home/ubuntu/new-cts/heuristic/src/Constructor/Scheduler/Initializer.cpp",
-  "file": "/home/ubuntu/new-cts/heuristic/src/Constructor/Scheduler/Initializer.cpp",
-  "output": "CMakeFiles/heuristic.dir/Constructor/Scheduler/Initializer.cpp.o"
+  "directory": "/home/dbxp/new-cts/heuristic/build",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/Scheduler/Initializer.cpp.o -c /home/dbxp/new-cts/heuristic/src/Constructor/Scheduler/Initializer.cpp",
+  "file": "/home/dbxp/new-cts/heuristic/src/Constructor/Scheduler/Initializer.cpp"
 },
 {
-  "directory": "/home/ubuntu/new-cts/heuristic/build",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/Scheduler/Update.cpp.o -c /home/ubuntu/new-cts/heuristic/src/Constructor/Scheduler/Update.cpp",
-  "file": "/home/ubuntu/new-cts/heuristic/src/Constructor/Scheduler/Update.cpp",
-  "output": "CMakeFiles/heuristic.dir/Constructor/Scheduler/Update.cpp.o"
+  "directory": "/home/dbxp/new-cts/heuristic/build",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/Scheduler/Update.cpp.o -c /home/dbxp/new-cts/heuristic/src/Constructor/Scheduler/Update.cpp",
+  "file": "/home/dbxp/new-cts/heuristic/src/Constructor/Scheduler/Update.cpp"
 },
 {
-  "directory": "/home/ubuntu/new-cts/heuristic/build",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/SolutionConstruct.cpp.o -c /home/ubuntu/new-cts/heuristic/src/Constructor/SolutionConstruct.cpp",
-  "file": "/home/ubuntu/new-cts/heuristic/src/Constructor/SolutionConstruct.cpp",
-  "output": "CMakeFiles/heuristic.dir/Constructor/SolutionConstruct.cpp.o"
+  "directory": "/home/dbxp/new-cts/heuristic/build",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/heuristic.dir/Constructor/SolutionConstruct.cpp.o -c /home/dbxp/new-cts/heuristic/src/Constructor/SolutionConstruct.cpp",
+  "file": "/home/dbxp/new-cts/heuristic/src/Constructor/SolutionConstruct.cpp"
 },
 {
-  "directory": "/home/ubuntu/new-cts/heuristic/build",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -o CMakeFiles/heuristic.dir/Loader/LoadData.cpp.o -c /home/ubuntu/new-cts/heuristic/src/Loader/LoadData.cpp",
-  "file": "/home/ubuntu/new-cts/heuristic/src/Loader/LoadData.cpp",
-  "output": "CMakeFiles/heuristic.dir/Loader/LoadData.cpp.o"
+  "directory": "/home/dbxp/new-cts/heuristic/build",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/heuristic.dir/Loader/LoadData.cpp.o -c /home/dbxp/new-cts/heuristic/src/Loader/LoadData.cpp",
+  "file": "/home/dbxp/new-cts/heuristic/src/Loader/LoadData.cpp"
 },
 {
-  "directory": "/home/ubuntu/new-cts/heuristic/build",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -o CMakeFiles/heuristic.dir/Solver/ReportGenerator.cpp.o -c /home/ubuntu/new-cts/heuristic/src/Solver/ReportGenerator.cpp",
-  "file": "/home/ubuntu/new-cts/heuristic/src/Solver/ReportGenerator.cpp",
-  "output": "CMakeFiles/heuristic.dir/Solver/ReportGenerator.cpp.o"
+  "directory": "/home/dbxp/new-cts/heuristic/build",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/heuristic.dir/Solver/ReportGenerator.cpp.o -c /home/dbxp/new-cts/heuristic/src/Solver/ReportGenerator.cpp",
+  "file": "/home/dbxp/new-cts/heuristic/src/Solver/ReportGenerator.cpp"
 },
 {
-  "directory": "/home/ubuntu/new-cts/heuristic/build",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -o CMakeFiles/heuristic.dir/Solver/Solver.cpp.o -c /home/ubuntu/new-cts/heuristic/src/Solver/Solver.cpp",
-  "file": "/home/ubuntu/new-cts/heuristic/src/Solver/Solver.cpp",
-  "output": "CMakeFiles/heuristic.dir/Solver/Solver.cpp.o"
+  "directory": "/home/dbxp/new-cts/heuristic/build",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/heuristic.dir/Solver/Solver.cpp.o -c /home/dbxp/new-cts/heuristic/src/Solver/Solver.cpp",
+  "file": "/home/dbxp/new-cts/heuristic/src/Solver/Solver.cpp"
 },
 {
-  "directory": "/home/ubuntu/new-cts/heuristic/build",
-  "command": "/usr/bin/c++   -g -std=gnu++20 -o CMakeFiles/heuristic.dir/main.cpp.o -c /home/ubuntu/new-cts/heuristic/src/main.cpp",
-  "file": "/home/ubuntu/new-cts/heuristic/src/main.cpp",
-  "output": "CMakeFiles/heuristic.dir/main.cpp.o"
+  "directory": "/home/dbxp/new-cts/heuristic/build",
+  "command": "/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/heuristic.dir/main.cpp.o -c /home/dbxp/new-cts/heuristic/src/main.cpp",
+  "file": "/home/dbxp/new-cts/heuristic/src/main.cpp"
 }
 ]

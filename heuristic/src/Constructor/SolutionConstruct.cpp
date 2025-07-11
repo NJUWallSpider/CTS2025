@@ -105,17 +105,11 @@ SolutionState SolutionConstructor::generate_schedule() {
     for(const auto& crew : crews_with_no_ground_duties){
         if(!crew.qualifications.empty()){
             crews_possess_qualifications.emplace_back(crew);
+        } else {
+            std::cout << "crew " << crew.id << " has no qualifications" << std::endl;
         }
     }
     
-
-    std::string start_str ;
-    if(crews.size() == 725){
-        start_str = "2024/12/30 00:00";
-    }
-    else{
-        start_str = "2025/4/29 00:00";
-    }
     for(const auto& crew : crews_possess_qualifications){
         CrewSchedule crew_schedule_builder(data_, crew, 
         solution.crew_dutyperiods[crew.id], 
@@ -252,13 +246,13 @@ void SolutionConstructor::ruin_solution(SolutionState& solution, const std::vect
 void SolutionConstructor::recreate_solution(SolutionState& solution, const std::vector<std::string>& selected_crews) {
     const auto& crews = data_.getCrews();
     
-    std::string start_str ;
-    if(crews.size() == 725){
-        start_str = "2024/12/30 00:00";
-    }
-    else{
-        start_str = "2025/4/29 00:00";
-    }
+    // std::string start_str ;
+    // if(crews.size() == 725){
+    //     start_str = "2024/12/30 00:00";
+    // }
+    // else{
+    //     start_str = "2025/4/29 00:00";
+    // }
     // 对于每个选中的机长
     for (const auto& crew_id : selected_crews) {
         // 确保机长存在于数据中

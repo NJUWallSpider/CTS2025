@@ -1,0 +1,4 @@
+Total Duty Periods: 1947
+Total Non-Base Layover: 1519
+Total Invalid Layover: 74
+Average Invalid Layover: 0.0380072
