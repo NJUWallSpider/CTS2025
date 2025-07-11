@@ -25,6 +25,12 @@ void CrewSchedule::initialize_crew_state() {
     // 3. Create and initialize a new cycle
     cycles_.emplace_back();
     initialize_cycle(cycles_.back());
+    
+    // 4. Initialize best path
+    best_path_ = PathState();
+    best_path_.current_airport = current_airport_;
+    best_path_.last_task_end_time = last_task_end_time_;
+    best_path_.total_flight_time = std::chrono::minutes(0);
 }
 
 void CrewSchedule::initialize_duty_period(DutyPeriod& duty_period){

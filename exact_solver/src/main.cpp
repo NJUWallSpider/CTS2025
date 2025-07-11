@@ -23,16 +23,16 @@ int main(int argc, char** argv) {
         // }
 
         // 此处是所有使用到的数据路径
-        std::string data_version = "0703";
+        std::string data_version = "0623";
         std::filesystem::path data_path = std::filesystem::path("data") / data_version; 
-        std::string fdp_path = "exact_solver/fdp_networks2/" + data_version; // 储存FDP网络的文件夹路径
+        std::string fdp_path = "exact_solver/fdp_networks/" + data_version; // 储存FDP网络的文件夹路径
         std::filesystem::path heuristic_path = std::filesystem::path("heuristic") / "report" / data_version / "rosterResult.csv"; // 储存启发式解的文件夹路径
         // std::filesystem::path heuristic_path = std::filesystem::path("/home/ubuntu/new-cts/empty_submission.csv");
-        Date start_date{std::chrono::year(2025)/std::chrono::January/std::chrono::day(1)};
-        Date end_date{std::chrono::year(2025)/std::chrono::January/std::chrono::day(7)};
+        Date start_date{std::chrono::year(2025)/std::chrono::April/std::chrono::day(29)};
+        Date end_date{std::chrono::year(2025)/std::chrono::May/std::chrono::day(7)};
         
         // 设置非基地机场结束的FDP被拒绝的概率
-        double non_base_rejection_prob = 0; 
+        double non_base_rejection_prob = 0.5; 
         
         // 设置任务数量阈值，超过此阈值将随机删除bus
         size_t max_tasks_threshold = 10000;
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
 
         const int MAX_ITERATIONS = 90; // 设置最大迭代次数
 
-        const int NUM_THREADS = 32;  // 设置线程数
+        const int NUM_THREADS = 8;  // 设置线程数
 
         // 加载调度数据
         std::cout << "正在加载数据..." << std::endl;

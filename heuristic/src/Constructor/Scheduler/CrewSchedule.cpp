@@ -104,62 +104,24 @@ void CrewSchedule::construct_schedule_DFS() {
         return get_start_time(a) < get_start_time(b);
     });
 
+    // 如果没有候选任务，检查当前路径是否为最佳路径
+    if (candidates.empty()) {
+        update_best_path();
+        return;
+    }
 
-
-
-
-
-    //     // 1. Check if last duty period is FDP and cannot be extended
-    // if (!duty_periods_.empty() && duty_periods_.back().is_FDuty && !duty_periods_.back().can_be_extended) {
-    //     // 2. Extract buses from candidates
-    //     std::vector<Bus> candidate_poses;
-    //     for (const auto& candidate : candidates) {
-    //         if (std::holds_alternative<Bus>(candidate)) {
-    //             candidate_poses.push_back(std::get<Bus>(candidate));
-    //         }
-    //     }
-
-    //     // 3. Sort buses according to the rules
-    //     std::sort(candidate_poses.begin(), candidate_poses.end(), [&](const Bus& a, const Bus& b) {
-    //         // Priority 1: Arrival airport is crew base
-    //         if (a.arriAirport == crew_.base && b.arriAirport != crew_.base) return true;
-    //         if (a.arriAirport != crew_.base && b.arriAirport == crew_.base) return false;
-
-    //         // Priority 2: Arrival airport is in layover stations
-    //         bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), a.arriAirport) != layover_spots.end();
-    //         bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), b.arriAirport) != layover_spots.end();
-    //         if (a_is_layover && !b_is_layover) return true;
-    //         if (!a_is_layover && b_is_layover) return false;
-
-    //         // Priority 3: Chronological by departure time
-    //         return a.td < b.td;
-    //     });
-
-    //     // 4. Replace the bus candidates in the original candidates vector
-    //     // Remove all buses from candidates
-    //     candidates.erase(
-    //         std::remove_if(candidates.begin(), candidates.end(),
-    //             [](const auto& c) { return std::holds_alternative<Bus>(c); }),
-    //         candidates.end()
-    //     );
-    //     // Insert sorted buses after flights (or at the appropriate position)
-    //     // Find the position after the last flight
-    //     auto insert_pos = std::find_if(candidates.begin(), candidates.end(),
-    //         [](const auto& c) { return !std::holds_alternative<Flight>(c); });
-    //     candidates.insert(insert_pos, candidate_poses.begin(), candidate_poses.end());
-    // }
-
-
-
-        // STEP2. Iterate through sorted candidates.
+    // STEP2. 尝试前MAX_BRANCHES个有效的候选任务
+    int valid_branches = 0;
     for (auto& candidate_task : candidates) {
-        // copy the current state
+        if (valid_branches >= MAX_BRANCHES) break;
+
+        // 保存当前状态
         std::vector<DutyPeriod> backup_duty_periods = duty_periods_;
         std::vector<Cycle> backup_cycles = cycles_;
         std::string backup_current_airport = current_airport_;
         TimePoint backup_last_task_end_time = last_task_end_time_;
 
-        // check the validity of the action
+        // 检查操作有效性
         if (Check_Action_validity(candidate_task)) {
             Action(candidate_task);
             /////////// GLOBLE STATE ///////////
@@ -169,33 +131,89 @@ void CrewSchedule::construct_schedule_DFS() {
             current_airport_ = get_arrival_airport(duty_periods_.back().tasks.back());
             /////////// DUTY PERIOD STATE ///////////
             Update_DutyPeriod();
-            // the validity of teh Layover and Cycle should be checked after the DP is updated
-            // if(Check_LayOver_validity() && Check_Cycle_validity()){
-            if(Check_Cycle_validity()){
+            
+            if (Check_Cycle_validity()) {
                 action_cycle();
                 Update_Cycle();
-                // --- Recurse ---
+                
+                // 递归搜索下一层
+                valid_branches++;
                 construct_schedule_DFS();
-                return ;
-            }
-            // if the action is not valid, backtrack to the previous state
-            else{
+                
+                // 恢复状态以探索其他分支
+                duty_periods_ = backup_duty_periods;
+                cycles_ = backup_cycles;
+                current_airport_ = backup_current_airport;
+                last_task_end_time_ = backup_last_task_end_time;
+            } else {
+                // 如果操作无效，恢复状态
                 duty_periods_ = backup_duty_periods;
                 cycles_ = backup_cycles;
                 current_airport_ = backup_current_airport;
                 last_task_end_time_ = backup_last_task_end_time;
             }
-            
-            // // --- Backtrack by restoring state ---
-            // current_airport_ = backup_current_airport;
-            // last_task_end_time_ = backup_last_task_end_time;
-            // duty_periods_ = backup_duty_periods;
-            // cycles_ = backup_cycles;
         }
     }
 
-    // No valid chronological path found from this state, so we just return.
+    // 如果没有找到有效的分支，检查当前路径是否为最佳路径
+    if (valid_branches == 0) {
+        update_best_path();
+    }
+    
     return;
+}
+
+void CrewSchedule::assign_tasks_to_crew() {
+    // 初始化最佳路径为空
+    best_path_ = PathState();
+    
+    // 执行DFS搜索
+    construct_schedule_DFS();
+    
+    // 应用找到的最佳路径
+    apply_best_path();
+    
+    // 输出最佳路径信息
+    std::cout << "找到最佳路径，总飞行时间: " 
+              << best_path_.total_flight_time.count() 
+              << " 分钟，包含 " 
+              << best_path_.duty_periods.size() 
+              << " 个值班周期" << std::endl;
+}
+
+// 计算路径的总飞行时间
+std::chrono::minutes CrewSchedule::calculate_total_flight_time(const std::vector<DutyPeriod>& duty_periods) {
+    std::chrono::minutes total_time(0);
+    
+    for (const auto& dp : duty_periods) {
+        total_time += dp.total_flight_time;
+    }
+    
+    return total_time;
+}
+
+// 更新最佳路径
+void CrewSchedule::update_best_path() {
+    std::chrono::minutes current_flight_time = calculate_total_flight_time(duty_periods_);
+    
+    // 如果当前路径的总飞行时间更长，或者最佳路径还未初始化
+    if (best_path_.duty_periods.empty() || current_flight_time > best_path_.total_flight_time) {
+        best_path_.duty_periods = duty_periods_;
+        best_path_.cycles = cycles_;
+        best_path_.current_airport = current_airport_;
+        best_path_.last_task_end_time = last_task_end_time_;
+        best_path_.total_flight_time = current_flight_time;
+    }
+}
+
+// 应用最佳路径
+void CrewSchedule::apply_best_path() {
+    if (!best_path_.duty_periods.empty()) {
+        duty_periods_ = best_path_.duty_periods;
+        cycles_ = best_path_.cycles;
+        current_airport_ = best_path_.current_airport;
+        last_task_end_time_ = best_path_.last_task_end_time;
+    }
 }
 
 

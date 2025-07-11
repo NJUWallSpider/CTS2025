@@ -1,4 +1,4 @@
-# Install script for directory: /home/ubuntu/new-cts/exact_solver/src
+# Install script for directory: /home/dbxp/new-cts/exact_solver/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/ubuntu/new-cts/exact_solver/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/dbxp/new-cts/exact_solver/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

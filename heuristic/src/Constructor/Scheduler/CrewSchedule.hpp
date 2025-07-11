@@ -99,8 +99,25 @@ private:
     /////
     std::string start_str_;
 
-
+    // 保存最佳路径信息
+    struct PathState {
+        std::vector<DutyPeriod> duty_periods;
+        std::vector<Cycle> cycles;
+        std::string current_airport;
+        TimePoint last_task_end_time;
+        std::chrono::minutes total_flight_time = std::chrono::minutes(0);
+    };
     
+    PathState best_path_; // 保存总飞行时间最长的路径
+    const int MAX_BRANCHES = 2; // 每层DFS探索的最大分支数
+    
+    // 计算路径的总飞行时间
+    std::chrono::minutes calculate_total_flight_time(const std::vector<DutyPeriod>& duty_periods);
+    // 更新最佳路径
+    void update_best_path();
+    // 应用最佳路径
+    void apply_best_path();
+
     // SolutionState& solution_;
     //
     // std::vector<std::variant<Flight, Bus>> schedule_; // Chronological list of tasks
