@@ -163,6 +163,8 @@ private:
     bool Check_Cycle_validity();
     bool Check_Schedule_validity();
     bool Check_LayOver_validity();
+    //
+    bool check_return_validity(const Flight& candidate_flight);
    
     //=== 
     bool try_positioning(const Flight& flight);
@@ -171,6 +173,9 @@ private:
 
     //
     TimePoint get_rest_start_point();
+    //
+
+    std::string find_unassigned_qualified_flight();
 
 
 

@@ -123,6 +123,7 @@ public:
     const std::map<std::string, std::vector<std::string>>& getFlightToCrews() const { return flight_to_crews_; }
     static TimePoint string_to_time_point(const std::string& time_str);
     std::string getDataVersion() const { return data_version_; }
+    const std::map<std::string, std::vector<Flight>>& getAircraftToFlights() const { return aircraft_to_flights_; }
 private:
     // --- 成员变量 ---
     std::map<std::string, Crew> crews_;
@@ -132,6 +133,7 @@ private:
     std::vector<Bus> buses_;
     std::vector<std::string> layover_stations_;
     std::string data_version_;
+    std::map<std::string, std::vector<Flight>> aircraft_to_flights_;
     // Maps a route (departure airport, arrival airport) to a list of leg indices that connect those airports
     std::map<std::pair<std::string, std::string>, std::vector<int>> route_to_legs_index_;
 
@@ -143,6 +145,8 @@ private:
     void _load_layover_stations(const std::filesystem::path& file_path);
     void _load_and_link_ground_duties(const std::filesystem::path& file_path);
     void _link_crew_qualifications(const std::filesystem::path& file_path);
+    void _sort_qualifications();
+    void _link_flights_to_aircrafts();
 };
 
 

@@ -119,6 +119,7 @@ SolutionState SolutionConstructor::generate_schedule() {
         start_str = "2025/4/29 00:00";
     }
     for(const auto& crew : crews_possess_qualifications){
+        solution.crew_assignment_order.push_back(crew.id);
         CrewSchedule crew_schedule_builder(data_, crew, 
         solution.crew_dutyperiods[crew.id], 
         solution.flight_assignments,

@@ -173,7 +173,11 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
     int NonBase_layover = 0;
     int Invalid_layover = 0;
     std::unordered_set<std::string> Invalid_layover_set;
-    for (const auto& [crew_id, duty_periods] : solution.crew_dutyperiods) {
+    for (const auto& crew_id : solution.crew_assignment_order) {
+        if (solution.crew_dutyperiods.find(crew_id) == solution.crew_dutyperiods.end()) {
+            continue;
+        }
+        const auto& duty_periods = solution.crew_dutyperiods.at(crew_id);
         if (all_crews.find(crew_id) == all_crews.end()) continue;
         const auto& crew_data = all_crews.at(crew_id);
 

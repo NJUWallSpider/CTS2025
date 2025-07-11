@@ -25,7 +25,8 @@ DataLoader::DataLoader(const std::filesystem::path& data_path, const std::string
     
     _load_and_link_ground_duties(data_path / "groundDuty.csv");
     _link_crew_qualifications(data_path / "crewLegMatch.csv");
-
+    //_sort_qualifications();
+    //_link_flights_to_aircrafts();
 
 
     std::cout << "数据加载完毕。共加载 " << crews_.size() << " 名机组成员, "
@@ -149,4 +150,36 @@ void DataLoader::_link_crew_qualifications(const std::filesystem::path& file_pat
 
         
     }
+
 }
+
+// void DataLoader::_sort_qualifications(){
+//     std::unordered_map<std::string, const Flight*> flight_map;
+//     for (const auto& flight : flights_) {
+//         flight_map[flight.id] = &flight;
+//     }
+//     for(auto& crew : crews_){
+//         std::sort(crew.second.qualifications.begin(), crew.second.qualifications.end(), [this, &flight_map](const std::string& a, const std::string& b) {
+//             auto a_it = flight_map.find(a);
+//             auto b_it = flight_map.find(b);
+
+//             if (a_it != flight_map.end() && b_it != flight_map.end()) {
+//                 return a_it->second->std < b_it->second->std;
+//             }
+//             return false;
+//         });
+//     }
+// }
+
+// void DataLoader::_link_flights_to_aircrafts(){
+//     for(auto& flight : flights_){
+//         aircraft_to_flights_[flight.aircraftNo].push_back(flight);
+//     }
+
+//     // sort the flights in each aircraft by the std time
+//     for(auto& aircraft : aircraft_to_flights_){
+//         std::sort(aircraft.second.begin(), aircraft.second.end(), [](const Flight& a, const Flight& b) {
+//             return a.std < b.std;
+//         });
+//     }
+// }
