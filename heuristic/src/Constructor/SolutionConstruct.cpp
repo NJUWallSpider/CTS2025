@@ -404,7 +404,9 @@ void SolutionConstructor::thread_worker(
         int current_iteration = ++global_iteration_counter;
         
         // 每100次全局迭代输出一次进度
-        if (current_iteration % 100 == 0 && start_idx == 0) {  // 只让第一个线程输出进度
+        if (
+            // current_iteration % 100 == 0 && 
+            start_idx == 0) {  // 只让第一个线程输出进度
             std::lock_guard<std::mutex> lock(global_best_mutex);
             std::cout << "完成迭代: " << current_iteration << "/" << (max_iterations * paths.size()) 
                       << ", 当前全局最优分数: " << global_best_solution.score << std::endl;

@@ -1,7 +1,7 @@
 CMakeFiles/heuristic.dir/main.cpp.o: \
- /home/dbxp/new-cts/heuristic/src/main.cpp /usr/include/stdc-predef.h \
- /home/dbxp/new-cts/heuristic/src/Solver/Solver.hpp \
- /home/dbxp/new-cts/heuristic/src/Solver/../Loader/LoadData.hpp \
+ /home/mip/new-cts/heuristic/src/main.cpp /usr/include/stdc-predef.h \
+ /home/mip/new-cts/heuristic/src/Solver/Solver.hpp \
+ /home/mip/new-cts/heuristic/src/Solver/../Loader/LoadData.hpp \
  /usr/include/c++/13/vector /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \

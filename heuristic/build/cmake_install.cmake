@@ -1,4 +1,4 @@
-# Install script for directory: /home/dbxp/new-cts/heuristic/src
+# Install script for directory: /home/mip/new-cts/heuristic/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/dbxp/new-cts/heuristic/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/mip/new-cts/heuristic/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <limits>
 #include <unordered_set>
+#include <queue> // 添加优先队列支持
 
 struct SolutionState; // Forward Declaration
 
@@ -86,6 +87,9 @@ public:
 
     // Main construction method
     void construct_schedule_DFS();
+    
+    // 新增束搜索方法
+    void construct_schedule_beam_search();
 
     std::string start_str;
 
@@ -106,10 +110,33 @@ private:
         std::string current_airport;
         TimePoint last_task_end_time;
         std::chrono::minutes total_flight_time = std::chrono::minutes(0);
+        
+        // 为束搜索添加评分函数
+        double score() const {
+            return total_flight_time.count();
+        }
+        
+        // 添加构造函数以方便创建
+        PathState() = default;
+        
+        PathState(const std::vector<DutyPeriod>& dps, const std::vector<Cycle>& cycs, 
+                 const std::string& airport, const TimePoint& end_time, 
+                 const std::chrono::minutes& flight_time)
+            : duty_periods(dps), cycles(cycs), current_airport(airport),
+              last_task_end_time(end_time), total_flight_time(flight_time) {}
+    };
+    
+    // 束搜索比较器
+    struct PathComparator {
+        bool operator()(const PathState& a, const PathState& b) const {
+            return a.score() < b.score();  // 最大堆，分数高的优先
+        }
     };
     
     PathState best_path_; // 保存总飞行时间最长的路径
     const int MAX_BRANCHES = 2; // 每层DFS探索的最大分支数
+    const int BEAM_WIDTH = 3;   // 束搜索宽度
+    const int MAX_DEPTH = 15;   // 最大搜索深度
     
     // 计算路径的总飞行时间
     std::chrono::minutes calculate_total_flight_time(const std::vector<DutyPeriod>& duty_periods);
