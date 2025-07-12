@@ -409,10 +409,44 @@ void CrewSchedule::apply_best_path() {
 }
 
 
-
-
-
-
+void CrewSchedule::delete_redundant_buses(){
+    // 如果没有duty periods，直接返回
+    if (duty_periods_.empty()) {
+        return;
+    }
+    
+    // 从最后一个duty period开始逆序遍历
+    for (int dp_idx = duty_periods_.size() - 1; dp_idx >= 0; --dp_idx) {
+        auto& dp = duty_periods_[dp_idx];
+        
+        // 从最后一个任务开始逆序遍历
+        for (int task_idx = dp.tasks.size() - 1; task_idx >= 0; --task_idx) {
+            const auto& task = dp.tasks[task_idx];
+            
+            // 检查当前任务是否为巴士任务
+            if (std::holds_alternative<Bus>(task)) {
+                // 删除巴士任务
+                dp.tasks.erase(dp.tasks.begin() + task_idx);
+                
+                // 更新duty period的统计信息
+                dp.taskCount--;
+                dp.total_task_time -= get_task_duration(task);
+                
+                // 如果duty period变为空，删除整个duty period
+                if (dp.tasks.empty()) {
+                    duty_periods_.erase(duty_periods_.begin() + dp_idx);
+                    break;
+                }
+            } else if (std::holds_alternative<Flight>(task)) {
+                // 遇到第一个航班任务，停止删除
+                return;
+            } else {
+                // 对于其他类型的任务（如GroundDuty），继续遍历
+                continue;
+            }
+        }
+    }
+}
     
    // --- Getter Helper Functions ---
 TimePoint get_start_time(const std::variant<Flight, Bus, GroundDuty>& task) {

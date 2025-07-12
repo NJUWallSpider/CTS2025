@@ -118,6 +118,8 @@ SolutionState SolutionConstructor::generate_schedule() {
         start_str);
 
         crew_schedule_builder.assign_tasks_to_crew();
+
+        crew_schedule_builder.delete_redundant_buses();
     }
     // the score of the solution is the sum of the flights that is piloted
     solution.score = 0.0;
@@ -267,6 +269,7 @@ void SolutionConstructor::recreate_solution(SolutionState& solution, const std::
             
             // 为该机长构建新的调度
             crew_schedule_builder.assign_tasks_to_crew();
+            crew_schedule_builder.delete_redundant_buses();
         }
     }
     

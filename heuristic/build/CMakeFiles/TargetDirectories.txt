@@ -1,3 +1,0 @@
-/home/mip/new-cts/heuristic/build/CMakeFiles/heuristic.dir
-/home/mip/new-cts/heuristic/build/CMakeFiles/edit_cache.dir
-/home/mip/new-cts/heuristic/build/CMakeFiles/rebuild_cache.dir

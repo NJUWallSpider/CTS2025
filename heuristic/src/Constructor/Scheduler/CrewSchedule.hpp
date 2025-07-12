@@ -91,6 +91,8 @@ public:
     // 新增束搜索方法
     void construct_schedule_beam_search();
 
+    void delete_redundant_buses();
+
     std::string start_str;
 
 private:
@@ -135,8 +137,8 @@ private:
     
     PathState best_path_; // 保存总飞行时间最长的路径
     const int MAX_BRANCHES = 2; // 每层DFS探索的最大分支数
-    const int BEAM_WIDTH = 3;   // 束搜索宽度
-    const int MAX_DEPTH = 15;   // 最大搜索深度
+    const int BEAM_WIDTH = 10000;   // 束搜索宽度
+    const int MAX_DEPTH = 20;   // 最大搜索深度
     
     // 计算路径的总飞行时间
     std::chrono::minutes calculate_total_flight_time(const std::vector<DutyPeriod>& duty_periods);
