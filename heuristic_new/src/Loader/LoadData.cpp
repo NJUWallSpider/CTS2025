@@ -28,6 +28,7 @@ DataLoader::DataLoader(const std::filesystem::path& data_path, const std::string
     //_sort_qualifications();
     _link_flights_to_aircrafts();
     _build_aircraft_routes();
+    _build_crew_turnarounds();
 
 
     std::cout << "数据加载完毕。共加载 " << crews_.size() << " 名机组成员, "
@@ -211,4 +212,62 @@ void DataLoader::_link_flights_to_aircrafts(){
             return a.std < b.std;
         });
     }
+}
+
+void DataLoader::_build_crew_turnarounds() {
+    std::cout << "Building crew turnarounds..." << std::endl;
+    
+    // Constants from CrewSchedule class
+    const std::chrono::hours MAX_FLY_TIME_PER_DUTY = std::chrono::hours(8);
+    const std::chrono::hours MAX_DUTY_TIME_PER_FLIGHT_DUTY = std::chrono::hours(12);
+    
+    for (const auto& [crew_id, crew] : crews_) {
+        for (const auto& flight : flights_) {
+            // Skip flights crew is not qualified for
+            if (crew.qualifications.find(flight.id) == crew.qualifications.end()) {
+                continue;
+            }
+
+            Turnaround current_turnaround;
+            current_turnaround.flights.push_back(&flight);
+            current_turnaround.startTime = flight.std;
+            current_turnaround.total_flight_time = std::chrono::minutes(flight.flyTime_mins);
+
+            const Flight* current_flight_in_turnaround = &flight;
+            while (true) {
+                auto route_it = aircraft_routes_.find(current_flight_in_turnaround->aircraftNo);
+                if (route_it == aircraft_routes_.end()) break;
+
+                auto conn_it = std::find_if(route_it->second.connections.begin(), route_it->second.connections.end(), 
+                    [&](const AircraftFlightConnection& conn){
+                    return conn.flight->id == current_flight_in_turnaround->id && conn.next_flight != nullptr;
+                });
+
+                if (conn_it == route_it->second.connections.end()) break;
+
+                const Flight* next_flight = conn_it->next_flight;
+                
+                // Skip if crew is not qualified for the next flight
+                if (crew.qualifications.find(next_flight->id) == crew.qualifications.end()) break;
+
+                auto new_total_flight_time = current_turnaround.total_flight_time + std::chrono::minutes(next_flight->flyTime_mins);
+                auto new_duty_time = std::chrono::duration_cast<std::chrono::minutes>(next_flight->sta - current_turnaround.startTime);
+
+                if (new_total_flight_time > MAX_FLY_TIME_PER_DUTY || new_duty_time > MAX_DUTY_TIME_PER_FLIGHT_DUTY) break;
+                
+                current_turnaround.flights.push_back(next_flight);
+                current_turnaround.total_flight_time = new_total_flight_time;
+                current_flight_in_turnaround = next_flight;
+            }
+
+            current_turnaround.endTime = current_flight_in_turnaround->sta;
+            current_turnaround.startAirport = current_turnaround.flights.front()->depaAirport;
+            current_turnaround.endAirport = current_turnaround.flights.back()->arriAirport;
+            
+            // Add to the crew's turnarounds organized by departure airport
+            crew_turnarounds_by_airport_[crew_id][current_turnaround.startAirport].push_back(current_turnaround);
+        }
+    }
+    
+    std::cout << "Crew turnarounds built successfully." << std::endl;
 }

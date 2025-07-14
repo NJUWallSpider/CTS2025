@@ -33,15 +33,7 @@ std::string get_arrival_airport(const std::variant<Flight, Bus, GroundDuty>& tas
 std::string get_depa_airport(const std::variant<Flight, Bus, GroundDuty>& task);
 std::chrono::minutes get_task_duration(const std::variant<Flight, Bus, GroundDuty>& task);
 
-struct Turnaround {
-    std::vector<const Flight*> flights;
-    const Bus* positioning_bus = nullptr;
-    TimePoint startTime;
-    TimePoint endTime;
-    std::chrono::minutes total_flight_time;
-    std::string startAirport;
-    std::string endAirport;
-};
+// Turnaround struct is now defined in LoadData.hpp
 
 struct DutyPeriod {
     int can_be_extended = 1; // 1 if the duty period can be extended, 0 if the duty period cannot be extended
@@ -84,11 +76,13 @@ public:
     /**
      * @brief Constructor
      * @param data All of the data loaded
+     * @param crew_turnarounds Pre-computed turnarounds for this crew organized by departure airport
      */
     explicit CrewSchedule(const DataLoader& data, const Crew& crew, 
             std::vector<DutyPeriod>& crew_duty_periods, 
             std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments,
-            std::vector<Cycle>& cycles);
+            std::vector<Cycle>& cycles,
+            const std::map<std::string, std::vector<Turnaround>>& crew_turnarounds);
 
     // 核心构造流程
     void assign_tasks_to_crew();
@@ -97,13 +91,14 @@ public:
     void construct_schedule_DFS();
 
 private:
-    void generate_turnaround_candidates(std::vector<Turnaround>& candidates);
+    void filter_turnaround_candidates(std::vector<Turnaround>& candidates);
     const DataLoader& data_; 
     const Crew& crew_;
     std::vector<DutyPeriod>& duty_periods_; // List of duty periods for rule checking
     std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments;
     
     std::vector<Cycle>& cycles_; // List of cycles for rule checking
+    const std::map<std::string, std::vector<Turnaround>>& crew_turnarounds_; // Pre-computed turnarounds by departure airport
     /////
     // std::string start_str_;
 

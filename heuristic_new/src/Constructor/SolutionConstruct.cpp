@@ -59,7 +59,7 @@ SolutionState SolutionConstructor::generate_schedule() {
         if(data_.getDataVersion() == "0711"){
             //Factor 3: Base station strategic value (30% weight)
             if(max_base_flights > 0 && base_flight_counts.count(crew.base)) {
-                score += (base_flight_counts[crew.base] / max_base_flights) * 0.3;
+                score -= (base_flight_counts[crew.base] / max_base_flights) * 0.3;
             }
         }
         else{        // Factor 2: Qualification flexibility (40% weight)
@@ -127,10 +127,15 @@ SolutionState SolutionConstructor::generate_schedule() {
 
     for(const auto& crew : crews_possess_qualifications){
         solution.crew_assignment_order.push_back(crew.id);
+        
+        // Get pre-computed turnarounds for this crew
+        const auto& crew_turnarounds = data_.getCrewTurnarounds().at(crew.id);
+        
         CrewSchedule crew_schedule_builder(data_, crew, 
             solution.crew_dutyperiods[crew.id], 
             solution.flight_assignments,
-            solution.crew_cycles[crew.id]);
+            solution.crew_cycles[crew.id],
+            crew_turnarounds);
 
         crew_schedule_builder.construct_schedule_DFS();
 
@@ -299,11 +304,15 @@ void SolutionConstructor::recreate_solution(SolutionState& solution, const std::
         if (crews.find(crew_id) != crews.end()) {
             const auto& crew = crews.at(crew_id);
             
+            // Get pre-computed turnarounds for this crew
+            const auto& crew_turnarounds = data_.getCrewTurnarounds().at(crew_id);
+            
             // 创建机长调度构建器
             CrewSchedule crew_schedule_builder(data_, crew, 
                 solution.crew_dutyperiods[crew_id], 
                 solution.flight_assignments,
-                solution.crew_cycles[crew_id]);
+                solution.crew_cycles[crew_id],
+                crew_turnarounds);
             
             // 为该机长构建新的调度
             crew_schedule_builder.construct_schedule_DFS();

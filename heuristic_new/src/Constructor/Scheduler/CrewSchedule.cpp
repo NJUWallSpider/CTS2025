@@ -14,8 +14,8 @@
 
 
 CrewSchedule::CrewSchedule(const DataLoader& data, const Crew& crew, std::vector<DutyPeriod>& crew_duty_periods, std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments,
-std::vector<Cycle>& cycles)
-    : data_(data), crew_(crew), duty_periods_(crew_duty_periods), flight_assignments(flight_assignments), cycles_(cycles) {
+std::vector<Cycle>& cycles, const std::map<std::string, std::vector<Turnaround>>& crew_turnarounds)
+    : data_(data), crew_(crew), duty_periods_(crew_duty_periods), flight_assignments(flight_assignments), cycles_(cycles), crew_turnarounds_(crew_turnarounds) {
     
     for (const auto& [_, crew_data] : data.getCrews()) {
         all_bases_.insert(crew_data.base);
@@ -26,9 +26,9 @@ std::vector<Cycle>& cycles)
 
 
 void CrewSchedule::construct_schedule_DFS() {
-    // STEP 1. Generate and sort turnaround candidates
+    // STEP 1. Filter and sort turnaround candidates
     std::vector<Turnaround> candidates;
-    generate_turnaround_candidates(candidates);
+    filter_turnaround_candidates(candidates);
 
     std::sort(candidates.begin(), candidates.end(), [&](const Turnaround& a, const Turnaround& b) {
         bool a_return_to_base = a.endAirport == crew_.base;
@@ -104,60 +104,36 @@ void CrewSchedule::Action_TA(const Turnaround& turnaround){
     }
 }
 
-void CrewSchedule::generate_turnaround_candidates(std::vector<Turnaround>& candidates) {
-    const auto& aircraft_routes = data_.getAircraftRoutes();
-    for (const auto& flight : data_.getFlights()) {
-        if (flight_assignments.count(flight.id)) {
-            continue; // Skip assigned flights
-        }
-
-        if (crew_.qualifications.find(flight.id) == crew_.qualifications.end()) {
-            continue; // Skip flights crew is not qualified for
-        }
-
-        if (flight.depaAirport != current_airport_) {
+void CrewSchedule::filter_turnaround_candidates(std::vector<Turnaround>& candidates) {
+    // Check if there are pre-computed turnarounds for the current airport
+    auto airport_it = crew_turnarounds_.find(current_airport_);
+    if (airport_it == crew_turnarounds_.end()) {
+        return; // No turnarounds available from current airport
+    }
+    
+    const auto& turnarounds_from_airport = airport_it->second;
+    
+    for (const auto& turnaround : turnarounds_from_airport) {
+        // Check if the turnaround starts after the last task end time
+        if (turnaround.startTime < last_task_end_time_) {
             continue;
         }
-
-        if (flight.std < last_task_end_time_) {
-            continue;
+        
+        // Check if any flights in the turnaround are already assigned
+        bool has_assigned_flight = false;
+        for (const auto* flight : turnaround.flights) {
+            if (flight_assignments.count(flight->id)) {
+                has_assigned_flight = true;
+                break;
+            }
         }
-
-        Turnaround current_turnaround;
-        current_turnaround.flights.push_back(&flight);
-        current_turnaround.startTime = flight.std;
-        current_turnaround.total_flight_time = std::chrono::minutes(flight.flyTime_mins);
-
-        const Flight* current_flight_in_turnaround = &flight;
-        while (true) {
-            auto route_it = aircraft_routes.find(current_flight_in_turnaround->aircraftNo);
-            if (route_it == aircraft_routes.end()) break;
-
-            auto conn_it = std::find_if(route_it->second.connections.begin(), route_it->second.connections.end(), 
-                [&](const AircraftFlightConnection& conn){
-                return conn.flight->id == current_flight_in_turnaround->id && conn.next_flight != nullptr;
-            });
-
-            if (conn_it == route_it->second.connections.end()) break;
-
-            const Flight* next_flight = conn_it->next_flight;
-            if (flight_assignments.count(next_flight->id)) break;
-            if (crew_.qualifications.find(next_flight->id) == crew_.qualifications.end()) break;
-
-            auto new_total_flight_time = current_turnaround.total_flight_time + std::chrono::minutes(next_flight->flyTime_mins);
-            auto new_duty_time = std::chrono::duration_cast<std::chrono::minutes>(next_flight->sta - current_turnaround.startTime);
-
-            if (new_total_flight_time > MAX_FLY_TIME_PER_DUTY || new_duty_time > MAX_DUTY_TIME_PER_FLIGHT_DUTY) break;
-            
-            current_turnaround.flights.push_back(next_flight);
-            current_turnaround.total_flight_time = new_total_flight_time;
-            current_flight_in_turnaround = next_flight;
+        
+        if (has_assigned_flight) {
+            continue; // Skip turnarounds with already assigned flights
         }
-
-        current_turnaround.endTime = current_flight_in_turnaround->sta;
-        current_turnaround.startAirport = current_turnaround.flights.front()->depaAirport;
-        current_turnaround.endAirport = current_turnaround.flights.back()->arriAirport;
-        candidates.push_back(current_turnaround);
+        
+        // Add the valid turnaround to candidates
+        candidates.push_back(turnaround);
     }
 }
 

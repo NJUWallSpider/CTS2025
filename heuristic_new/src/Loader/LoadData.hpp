@@ -61,6 +61,17 @@ struct Bus{
     TimePoint ta;
 };
 
+// Forward declaration for Turnaround
+struct Turnaround {
+    std::vector<const Flight*> flights;
+    const Bus* positioning_bus = nullptr;
+    TimePoint startTime;
+    TimePoint endTime;
+    std::chrono::minutes total_flight_time;
+    std::string startAirport;
+    std::string endAirport;
+};
+
 // 代表一个预先分配的地面勤务
 struct GroundDuty {
     std::string crew_id;
@@ -136,6 +147,7 @@ public:
     std::string getDataVersion() const { return data_version_; }
     const std::map<std::string, std::vector<Flight>>& getAircraftToFlights() const { return aircraft_to_flights_; }
     const std::map<std::string, AircraftRoute>& getAircraftRoutes() const { return aircraft_routes_; }
+    const std::map<std::string, std::map<std::string, std::vector<Turnaround>>>& getCrewTurnarounds() const { return crew_turnarounds_by_airport_; }
 private:
     // --- 成员变量 ---
     std::map<std::string, Crew> crews_;
@@ -149,6 +161,10 @@ private:
     std::map<std::string, AircraftRoute> aircraft_routes_;
     // Maps a route (departure airport, arrival airport) to a list of leg indices that connect those airports
     std::map<std::pair<std::string, std::string>, std::vector<int>> route_to_legs_index_;
+    
+    // Pre-computed turnarounds for each crew organized by departure airport
+    // crew_id -> departure_airport -> list of turnarounds starting from that airport
+    std::map<std::string, std::map<std::string, std::vector<Turnaround>>> crew_turnarounds_by_airport_;
 
 
     // --- 私有加载函数 ---
@@ -161,6 +177,7 @@ private:
     void _sort_qualifications();
     void _link_flights_to_aircrafts();
     void _build_aircraft_routes();
+    void _build_crew_turnarounds();
 };
 
 
