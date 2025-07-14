@@ -17,7 +17,9 @@
 #include <functional>
 #include <set>
 
-SolutionConstructor::SolutionConstructor(const DataLoader& data, std::string start_str) : data_(data), start_str(start_str) {}
+SolutionConstructor::SolutionConstructor(const DataLoader& data) : data_(data) {
+    data_version_ = data.getDataVersion();
+}
 
 SolutionState SolutionConstructor::generate_schedule() {
     SolutionState solution;
@@ -57,12 +59,17 @@ SolutionState SolutionConstructor::generate_schedule() {
         
         // Factor 2: Qualification flexibility (40% weight)
         if(max_quals > 0) {
-            score -= (crew.qualifications.size() / max_quals) * 0.6;
+            score -= (crew.qualifications.size() / max_quals) * 0.3;
         }
         
-        // // Factor 3: Base station strategic value (30% weight)
+        // Factor 3: Base station strategic value (30% weight)
         // if(max_base_flights > 0 && base_flight_counts.count(crew.base)) {
-        //     score -= (base_flight_counts[crew.base] / max_base_flights) * 0.2;
+        //     score += (base_flight_counts[crew.base] / max_base_flights) * 0.3;
+        // }
+
+        // Factor 4: Initial airport (20% weight)
+        // if(max_base_flights > 0 && base_flight_counts.count(crew.initialStayStation)) {
+        //     score -= (base_flight_counts[crew.initialStayStation] / max_base_flights) * 0.7;
         // }
         
         crew_scores.emplace_back(crew, score);
@@ -100,27 +107,47 @@ SolutionState SolutionConstructor::generate_schedule() {
 
     //////////////////////
 
-    ////// for 0703 data: ////////
     std::vector<Crew> crews_possess_qualifications;
     for(const auto& crew : crews_with_no_ground_duties){
         if(!crew.qualifications.empty()){
             crews_possess_qualifications.emplace_back(crew);
-        } else {
-            std::cout << "crew " << crew.id << " has no qualifications" << std::endl;
         }
     }
-    
+    //////////////////////
+
+
+
+
     for(const auto& crew : crews_possess_qualifications){
+        solution.crew_assignment_order.push_back(crew.id);
         CrewSchedule crew_schedule_builder(data_, crew, 
-        solution.crew_dutyperiods[crew.id], 
-        solution.flight_assignments,
-        solution.crew_cycles[crew.id],
-        start_str);
+            solution.crew_dutyperiods[crew.id], 
+            solution.flight_assignments,
+            solution.crew_cycles[crew.id]);
 
-        crew_schedule_builder.assign_tasks_to_crew();
+        crew_schedule_builder.construct_schedule_DFS();
 
-        crew_schedule_builder.delete_redundant_buses();
     }
+
+    // std::vector<Crew> unassigned_crews;
+    // // 收集所有未分配任务的机长ID
+    // for (const auto& [crew_id, duty_periods] : solution.crew_dutyperiods) {
+    //     // 只选择有任务的机长
+    //     if (duty_periods.back().tasks.empty()) {
+    //         unassigned_crews.push_back(data_.getCrews().at(crew_id));
+    //     }
+    // }
+
+    // for(const auto& crew : unassigned_crews){
+    //     solution.crew_assignment_order.push_back(crew.id);
+    //     CrewSchedule crew_schedule_builder(data_, crew, 
+    //         solution.crew_dutyperiods[crew.id], 
+    //         solution.flight_assignments,
+    //         solution.crew_cycles[crew.id]);
+    //     crew_schedule_builder.construct_schedule_DFS();
+
+    // }
+
     // the score of the solution is the sum of the flights that is piloted
     solution.score = 0.0;
     for(const auto& flight : solution.flight_assignments){
@@ -132,6 +159,9 @@ SolutionState SolutionConstructor::generate_schedule() {
             }
         }
     }
+    solution.avg_flight_hours = calculate_avg_flight_hours(solution);
+    solution.NFDP_count = calculate_NFDP_count(solution);
+
     return solution;
 }
 
@@ -175,17 +205,23 @@ std::vector<std::string> SolutionConstructor::select_crews_to_ruin(const Solutio
     std::vector<std::string> all_crew_ids;
     std::vector<std::string> selected_crews;
     
-    // 收集所有已分配任务的机长ID
-    for (const auto& [crew_id, duty_periods] : solution.crew_dutyperiods) {
-        // 只选择有任务的机长
-        if (!duty_periods.empty()) {
+    // // 收集所有已分配任务的机长ID
+    // for (const auto& [crew_id, duty_periods] : solution.crew_dutyperiods) {
+    //     // 只选择有任务的机长
+    //     if (!duty_periods.empty()) {
+    //         all_crew_ids.push_back(crew_id);
+    //     }
+    // }
+    
+    // // 如果没有机长有任务，返回空列表
+    // if (all_crew_ids.empty()) {
+    //     return selected_crews;
+    // }
+
+    for(const auto& [crew_id, crew] : data_.getCrews()){
+        if(crew.qualifications.size() > 0 && crew.groundDuties.size() < 1){
             all_crew_ids.push_back(crew_id);
         }
-    }
-    
-    // 如果没有机长有任务，返回空列表
-    if (all_crew_ids.empty()) {
-        return selected_crews;
     }
     
     // 计算要选择的机长数量
@@ -247,13 +283,7 @@ void SolutionConstructor::ruin_solution(SolutionState& solution, const std::vect
 void SolutionConstructor::recreate_solution(SolutionState& solution, const std::vector<std::string>& selected_crews) {
     const auto& crews = data_.getCrews();
     
-    // std::string start_str ;
-    // if(crews.size() == 725){
-    //     start_str = "2024/12/30 00:00";
-    // }
-    // else{
-    //     start_str = "2025/4/29 00:00";
-    // }
+
     // 对于每个选中的机长
     for (const auto& crew_id : selected_crews) {
         // 确保机长存在于数据中
@@ -264,12 +294,10 @@ void SolutionConstructor::recreate_solution(SolutionState& solution, const std::
             CrewSchedule crew_schedule_builder(data_, crew, 
                 solution.crew_dutyperiods[crew_id], 
                 solution.flight_assignments,
-                solution.crew_cycles[crew_id],
-                start_str);
+                solution.crew_cycles[crew_id]);
             
             // 为该机长构建新的调度
-            crew_schedule_builder.assign_tasks_to_crew();
-            crew_schedule_builder.delete_redundant_buses();
+            crew_schedule_builder.construct_schedule_DFS();
         }
     }
     
@@ -378,9 +406,9 @@ void SolutionConstructor::thread_worker(
                                       << " 找到新的全局最优解，分数: " << global_best_solution.score 
                                       << ", 迭代: " << global_iteration_counter.load() 
                                       << ", 温度: " << temperature << std::endl;
-                                ReportGenerator::generate_schedule_report(global_best_solution, data_, "heuristic/report/schedule_report.txt", std::chrono::steady_clock::now());
-                                ReportGenerator::generate_submission_csv(global_best_solution, "heuristic/report/rosterResult.csv");
-                                ReportGenerator::validate_crew_flight_consistency(global_best_solution, "heuristic/report/crew_flight_consistency.txt");
+                                ReportGenerator::generate_schedule_report(global_best_solution, data_, "heuristic/report/" + data_version_ + "/schedule_report.txt", std::chrono::steady_clock::now());
+                                ReportGenerator::generate_submission_csv(global_best_solution, "heuristic/report/" + data_version_ + "/rosterResult.csv");
+                                ReportGenerator::validate_crew_flight_consistency(global_best_solution, "heuristic/report/" + data_version_ + "/crew_flight_consistency.txt");
 
                         }
                     }
@@ -407,9 +435,7 @@ void SolutionConstructor::thread_worker(
         int current_iteration = ++global_iteration_counter;
         
         // 每100次全局迭代输出一次进度
-        if (
-            // current_iteration % 100 == 0 && 
-            start_idx == 0) {  // 只让第一个线程输出进度
+        if (current_iteration % 100 == 0 && start_idx == 0) {  // 只让第一个线程输出进度
             std::lock_guard<std::mutex> lock(global_best_mutex);
             std::cout << "完成迭代: " << current_iteration << "/" << (max_iterations * paths.size()) 
                       << ", 当前全局最优分数: " << global_best_solution.score << std::endl;

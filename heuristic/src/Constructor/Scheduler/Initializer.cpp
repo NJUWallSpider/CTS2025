@@ -14,8 +14,8 @@ void CrewSchedule::initialize_crew_state() {
     // 1. Initialize time and location
     current_airport_ = crew_.initialStayStation;
   
-
-    time_t start_time_t = Utils::parseTime(start_str_);
+    std::string start_ =  "2024/12/30 00:00" ;     
+    time_t start_time_t = Utils::parseTime(start_);
     last_task_end_time_ = std::chrono::system_clock::from_time_t(start_time_t)+ std::chrono::hours(8);
 
     // 2. Create and initialize a new duty period
@@ -25,12 +25,6 @@ void CrewSchedule::initialize_crew_state() {
     // 3. Create and initialize a new cycle
     cycles_.emplace_back();
     initialize_cycle(cycles_.back());
-    
-    // 4. Initialize best path
-    best_path_ = PathState();
-    best_path_.current_airport = current_airport_;
-    best_path_.last_task_end_time = last_task_end_time_;
-    best_path_.total_flight_time = std::chrono::minutes(0);
 }
 
 void CrewSchedule::initialize_duty_period(DutyPeriod& duty_period){

@@ -13,6 +13,8 @@ public:
     static bool validate_crew_flight_consistency(const SolutionState& solution, const std::string& output_path);
     static void generate_schedule_report(const SolutionState& solution, const DataLoader& data, const std::string& output_path, const std::chrono::steady_clock::time_point& start_time);
     static void generate_submission_csv(const SolutionState& solution, const std::string& output_path);
+    static void generate_assignment_report(const SolutionState& solution, const DataLoader& data, const std::string& output_path);
+    static void generate_crew_dutyperiod_report(const SolutionState& solution, const DataLoader& data, const std::string& output_path);
 private:
     std::string data_version_;
 }; 

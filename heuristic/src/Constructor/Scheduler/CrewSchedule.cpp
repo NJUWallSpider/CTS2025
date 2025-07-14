@@ -14,8 +14,8 @@
 
 
 CrewSchedule::CrewSchedule(const DataLoader& data, const Crew& crew, std::vector<DutyPeriod>& crew_duty_periods, std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments,
-std::vector<Cycle>& cycles, std::string start_str)
-    : data_(data), crew_(crew), duty_periods_(crew_duty_periods), flight_assignments(flight_assignments), cycles_(cycles), start_str_(start_str) {
+std::vector<Cycle>& cycles)
+    : data_(data), crew_(crew), duty_periods_(crew_duty_periods), flight_assignments(flight_assignments), cycles_(cycles) {
     
     for (const auto& [_, crew_data] : data.getCrews()) {
         all_bases_.insert(crew_data.base);
@@ -33,95 +33,283 @@ void CrewSchedule::construct_schedule_DFS() {
     std::vector<std::variant<Flight, Bus, GroundDuty>> candidates;
     int flight_count = 0;
     int bus_count = 0;
-    for (const auto& flight : data_.getFlights()) {
-        // if (flight.std >= last_task_end_time_ ) {
-        if (flight.depaAirport == current_airport_ && flight.std >= last_task_end_time_ ) {
-            candidates.emplace_back(flight);
-            flight_count++;
-        }
-    }
 
-    for (const auto& bus : data_.getBuses()) {
-        if (bus.depaAirport == current_airport_ && bus.td >= last_task_end_time_) {
-            candidates.emplace_back(bus);
-            bus_count++;
-        }
-    }
-
-    // for (const auto& ground_duty : crew_.groundDuties) {
-    //     if ( ground_duty.start_time > last_task_end_time_) {
-    //         candidates.emplace_back(ground_duty);
+    DutyPeriod last_duty_period = duty_periods_.back();
+    // if((!last_duty_period.is_FDuty && current_airport_ != crew_.base ) || (last_duty_period.is_FDuty && last_duty_period.total_flight_time > std::chrono::hours(7) && std::find(all_bases_.begin(), all_bases_.end(), current_airport_) != all_bases_.end())){
+    //     for (const auto& bus : data_.getBuses()) {
+    //         if (bus.depaAirport == current_airport_ && bus.td >= last_task_end_time_ ) {
+    //             candidates.emplace_back(bus);
+    //             bus_count++;
+    //         }
     //     }
+    //     std::sort(candidates.begin(), candidates.end(), [&](const auto& a, const auto& b) {
+    //         bool a_is_bus = std::holds_alternative<Bus>(a);
+    //         bool b_is_bus = std::holds_alternative<Bus>(b);
+
+    //         if (a_is_bus && b_is_bus) {
+    //             const auto& bus_a = std::get<Bus>(a);
+    //             const auto& bus_b = std::get<Bus>(b);
+
+    //             // bool a_to_pointing = bus_a.arriAirport == unassigned_qualified_flight.depaAirport;
+    //             // bool b_to_pointing = bus_b.arriAirport == unassigned_qualified_flight.depaAirport;
+    //             // if(a_to_pointing != b_to_pointing){
+    //             //     return a_to_pointing;
+    //             // }
+
+    //             bool a_to_base = bus_a.arriAirport == crew_.base;
+    //             bool b_to_base = bus_b.arriAirport == crew_.base;
+    //             if(a_to_base != b_to_base){
+    //                 return a_to_base;
+    //             }
+                
+    //             bool a_to_hub = all_bases_.count(bus_a.arriAirport) > 0;
+    //             bool b_to_hub = all_bases_.count(bus_b.arriAirport) > 0;
+    //             if (a_to_hub != b_to_hub) {
+    //                 return a_to_hub; // Prioritize hub destination
+    //             }
+    //         }
+    //         return get_start_time(a) < get_start_time(b);
+    //     });
+
     // }
+    // else{
 
-    std::vector<std::string> layover_spots = data_.getLayoverStations();
+        for (const auto& flight : data_.getFlights()) {
+            // if (flight.std >= last_task_end_time_ ) {
+            if (flight.depaAirport == current_airport_ && flight.std > last_task_end_time_ ) {
+                candidates.emplace_back(flight);
+                flight_count++;
+            }
+        }
+        //&& std::find(crew_.qualifications.begin(), crew_.qualifications.end(), flight.id) != crew_.qualifications.end()
 
-    // bool maybe_the_last_flight = (duty_periods_.back().is_FDuty && duty_periods_.back().can_be_extended && duty_periods_.back().taskCount >= 2 );
-    bool maybe_the_last_flight = false;
-    // Sort candidates based on the new rules
-    std::sort(candidates.begin(), candidates.end(), [&](const auto& a, const auto& b) {
+        for (const auto& bus : data_.getBuses()) {
+            if (bus.depaAirport == current_airport_ && bus.td > last_task_end_time_ ) {
+                candidates.emplace_back(bus);
+                bus_count++;
+            }
+        }
+        //&& bus.arriAirport == crew_.base
+
+        // for (const auto& ground_duty : crew_.groundDuties) {
+        //     if ( ground_duty.start_time > last_task_end_time_) {
+        //         candidates.emplace_back(ground_duty);
+        //     }
+        // }
+        std::string unassigned_qualified_flight_id = find_unassigned_qualified_flight();
+        if(unassigned_qualified_flight_id == ""){
+            if(current_airport_ == crew_.base){
+                return ;
+            }
+        }
+        // Flight unassigned_qualified_flight;
+        // for(const auto& flight : data_.getFlights()){
+        //     if(flight.id == unassigned_qualified_flight_id){
+        //         unassigned_qualified_flight = flight;
+        //         break;
+        //     }
+        // }
+
         
-            bool a_is_flight = std::holds_alternative<Flight>(a);
-            bool b_is_flight = std::holds_alternative<Flight>(b);
+        // if the latest task is a flight, get the aircraftNo
+        // std::string last_aircraftNo = "";
+        // if(duty_periods_.back().is_FDuty && duty_periods_.back().can_be_extended){
+        //     last_aircraftNo = std::get<Flight>(duty_periods_.back().tasks.back()).aircraftNo;
+        // }
 
-            // Prioritize flights that return to the crew's base
-            if(maybe_the_last_flight){
-                if (a_is_flight && b_is_flight) {
-                    const auto& flight_a = std::get<Flight>(a);
-                    const auto& flight_b = std::get<Flight>(b);
-                    bool a_returns_to_base = (flight_a.arriAirport == crew_.base);
-                    bool b_returns_to_base = (flight_b.arriAirport == crew_.base);
-                    if (a_returns_to_base != b_returns_to_base) {
-                        return a_returns_to_base;
-                    }
-                    bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), flight_a.arriAirport) != layover_spots.end();
-                    bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), flight_b.arriAirport) != layover_spots.end();
-                    if (a_is_layover != b_is_layover) {
-                        return a_is_layover;
-                    }
-                }
-            }
-
-            if (a_is_flight != b_is_flight) return a_is_flight;
-
-            bool a_is_bus = std::holds_alternative<Bus>(a);
-            bool b_is_bus = std::holds_alternative<Bus>(b);
-
-            if (a_is_bus && !b_is_bus) return true;  // a (bus) comes before b (flight)
-            if (!a_is_bus && b_is_bus) return false; // b (bus) comes before a (flight)
-
-            if (a_is_bus && b_is_bus) {
-                const auto& bus_a = std::get<Bus>(a);
-                const auto& bus_b = std::get<Bus>(b);
-                bool a_to_hub = all_bases_.count(bus_a.arriAirport) > 0;
-                bool b_to_hub = all_bases_.count(bus_b.arriAirport) > 0;
-                if (a_to_hub != b_to_hub) {
-                    return a_to_hub; // Prioritize hub destination
-                }
-            }
+        std::vector<std::string> layover_spots = data_.getLayoverStations();
+        std::string start_ =  "2025/5/1 00:00" ;     
+        time_t start_time_t = Utils::parseTime(start_);
+        TimePoint schedule_start_time = std::chrono::system_clock::from_time_t(start_time_t)+ std::chrono::hours(8);
     
+        // bool maybe_the_last_flight = (duty_periods_.back().is_FDuty && duty_periods_.back().can_be_extended && duty_periods_.back().taskCount >= 2 );
+        bool maybe_the_last_flight = false;
+        // Sort candidates based on the new rules
+        std::sort(candidates.begin(), candidates.end(), [&](const auto& a, const auto& b) {
+
+
+                bool a_is_flight = std::holds_alternative<Flight>(a);
+                bool b_is_flight = std::holds_alternative<Flight>(b);
+                bool a_is_bus = std::holds_alternative<Bus>(a);
+                bool b_is_bus = std::holds_alternative<Bus>(b);
+
+                // bool a_before_schedule = get_start_time(a) < schedule_start_time;
+                // bool b_before_schedule = get_start_time(b) < schedule_start_time;
+                // if(a_before_schedule != b_before_schedule){
+                //     if(a_is_bus){
+                //         return current_airport_ != crew_.base && get_arrival_airport(a) == crew_.base;
+                //     }
+                //     else{
+                //         return current_airport_ != crew_.base && get_arrival_airport(b) == crew_.base;
+                //     }
+                // }
+
+                // if(a_is_flight && b_is_flight){
+                //     const auto& flight_a = std::get<Flight>(a);
+                //     const auto& flight_b = std::get<Flight>(b);
+                //     bool a_qualified = std::find(crew_.qualifications.begin(), crew_.qualifications.end(), flight_a.id) != crew_.qualifications.end();
+                //     bool b_qualified = std::find(crew_.qualifications.begin(), crew_.qualifications.end(), flight_b.id) != crew_.qualifications.end();
+                //     if(a_qualified != b_qualified){
+                //         return a_qualified;
+                //     }
+                // }
+                // if(a_is_flight != b_is_flight){
+                //     if(a_is_flight){
+                //         const auto& flight_a = std::get<Flight>(a);
+                //         bool a_qualified = std::find(crew_.qualifications.begin(), crew_.qualifications.end(), flight_a.id) != crew_.qualifications.end();
+                //         if(a_qualified){
+                //             return true;
+                //         }
+                //     }
+                //     else{
+                //         const auto& flight_b = std::get<Flight>(b);
+                //         bool b_qualified = std::find(crew_.qualifications.begin(), crew_.qualifications.end(), flight_b.id) != crew_.qualifications.end();
+                //         if(b_qualified){
+                //             return true;
+                //         }
+                //     }
+                // }
+
+
+                // // // Prioritize flights that return to the crew's base
+                // // if(maybe_the_last_flight){
+                // //     if (a_is_flight && b_is_flight) {
+                // //         const auto& flight_a = std::get<Flight>(a);
+                // //         const auto& flight_b = std::get<Flight>(b);
+                // //         bool a_returns_to_base = (flight_a.arriAirport == crew_.base);
+                // //         bool b_returns_to_base = (flight_b.arriAirport == crew_.base);
+                // //         if (a_returns_to_base != b_returns_to_base) {
+                // //             return a_returns_to_base;
+                // //         }
+                // //         bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), flight_a.arriAirport) != layover_spots.end();
+                // //         bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), flight_b.arriAirport) != layover_spots.end();
+                // //         if (a_is_layover != b_is_layover) {
+                // //             return a_is_layover;
+                // //         }
+                // //     }
+                // // }
+
+                if (a_is_flight != b_is_flight) return a_is_flight;
+                // if(a_is_flight && b_is_flight){
+                //     const auto& flight_a = std::get<Flight>(a);
+                //     const auto& flight_b = std::get<Flight>(b);
+                //     bool a_same_aircraftNo = flight_a.aircraftNo == last_aircraftNo;
+                //     bool b_same_aircraftNo = flight_b.aircraftNo == last_aircraftNo;
+                //     if(a_same_aircraftNo != b_same_aircraftNo){
+                //         return a_same_aircraftNo;
+                //     }
+                // }
+                //  if(a_is_flight && b_is_flight){
+                //     const auto& flight_a = std::get<Flight>(a);
+                //     const auto& flight_b = std::get<Flight>(b);
+                //     bool a_qualified = std::find(crew_.qualifications.begin(), crew_.qualifications.end(), flight_a.id) != crew_.qualifications.end();
+                //     bool b_qualified = std::find(crew_.qualifications.begin(), crew_.qualifications.end(), flight_b.id) != crew_.qualifications.end();
+                //     if(a_qualified != b_qualified){
+                //         return a_qualified;
+                //     }
+                // }
+
+                // if (a_is_bus && !b_is_bus) {
+                //     return false;  
+                // }
+                // if (!a_is_bus && b_is_bus) {
+                //     return true;  
+                // }
+
+                if (a_is_bus && b_is_bus) {
+                    const auto& bus_a = std::get<Bus>(a);
+                    const auto& bus_b = std::get<Bus>(b);
+
+                    // bool a_to_pointing = bus_a.arriAirport == unassigned_qualified_flight.depaAirport;
+                    // bool b_to_pointing = bus_b.arriAirport == unassigned_qualified_flight.depaAirport;
+                    // if(a_to_pointing != b_to_pointing){
+                    //     return a_to_pointing;
+                    // }
+
+                    bool a_to_base = bus_a.arriAirport == crew_.base;
+                    bool b_to_base = bus_b.arriAirport == crew_.base;
+                    if(a_to_base != b_to_base){
+                        return a_to_base;
+                    }
+                    
+                    bool a_to_hub = all_bases_.count(bus_a.arriAirport) > 0;
+                    bool b_to_hub = all_bases_.count(bus_b.arriAirport) > 0;
+                    if (a_to_hub != b_to_hub) {
+                        return a_to_hub; // Prioritize hub destination
+                    }
+                }
         
-        return get_start_time(a) < get_start_time(b);
-    });
+            
+            return get_start_time(a) < get_start_time(b);
+        });
 
-    // 如果没有候选任务，检查当前路径是否为最佳路径
-    if (candidates.empty()) {
-        update_best_path();
-        return;
-    }
+        // Bus detector_bus;
+        // detector_bus.id = DETECTOR_BUS_ID;
+        // detector_bus.depaAirport = current_airport_;
+        // detector_bus.arriAirport = current_airport_;
+        // std::string start_ =  "2026/12/30 00:00" ;     
+        // time_t start_time_t = Utils::parseTime(start_);
+        // TimePoint start_time = std::chrono::system_clock::from_time_t(start_time_t);
+        // detector_bus.td = start_time + std::chrono::days(20);
+        // detector_bus.ta = start_time + std::chrono::days(30);
+        // candidates.emplace_back(std::move(detector_bus));
 
-    // STEP2. 尝试前MAX_BRANCHES个有效的候选任务
-    int valid_branches = 0;
+
+
+
+
+
+        //     // 1. Check if last duty period is FDP and cannot be extended
+        // if (!duty_periods_.empty() && duty_periods_.back().is_FDuty && !duty_periods_.back().can_be_extended) {
+        //     // 2. Extract buses from candidates
+        //     std::vector<Bus> candidate_poses;
+        //     for (const auto& candidate : candidates) {
+        //         if (std::holds_alternative<Bus>(candidate)) {
+        //             candidate_poses.push_back(std::get<Bus>(candidate));
+        //         }
+        //     }
+
+        //     // 3. Sort buses according to the rules
+        //     std::sort(candidate_poses.begin(), candidate_poses.end(), [&](const Bus& a, const Bus& b) {
+        //         // Priority 1: Arrival airport is crew base
+        //         if (a.arriAirport == crew_.base && b.arriAirport != crew_.base) return true;
+        //         if (a.arriAirport != crew_.base && b.arriAirport == crew_.base) return false;
+
+        //         // Priority 2: Arrival airport is in layover stations
+        //         bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), a.arriAirport) != layover_spots.end();
+        //         bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), b.arriAirport) != layover_spots.end();
+        //         if (a_is_layover && !b_is_layover) return true;
+        //         if (!a_is_layover && b_is_layover) return false;
+
+        //         // Priority 3: Chronological by departure time
+        //         return a.td < b.td;
+        //     });
+
+        //     // 4. Replace the bus candidates in the original candidates vector
+        //     // Remove all buses from candidates
+        //     candidates.erase(
+        //         std::remove_if(candidates.begin(), candidates.end(),
+        //             [](const auto& c) { return std::holds_alternative<Bus>(c); }),
+        //         candidates.end()
+        //     );
+        //     // Insert sorted buses after flights (or at the appropriate position)
+        //     // Find the position after the last flight
+        //     auto insert_pos = std::find_if(candidates.begin(), candidates.end(),
+        //         [](const auto& c) { return !std::holds_alternative<Flight>(c); });
+        //     candidates.insert(insert_pos, candidate_poses.begin(), candidate_poses.end());
+        // }
+
+    //}
+
+        // STEP2. Iterate through sorted candidates.
     for (auto& candidate_task : candidates) {
-        if (valid_branches >= MAX_BRANCHES) break;
-
-        // 保存当前状态
+        // copy the current state
         std::vector<DutyPeriod> backup_duty_periods = duty_periods_;
-        std::vector<Cycle> backup_cycles = cycles_;
+        //std::vector<Cycle> backup_cycles = cycles_;
         std::string backup_current_airport = current_airport_;
         TimePoint backup_last_task_end_time = last_task_end_time_;
 
-        // 检查操作有效性
+        // check the validity of the action
         if (Check_Action_validity(candidate_task)) {
             Action(candidate_task);
             /////////// GLOBLE STATE ///////////
@@ -131,322 +319,40 @@ void CrewSchedule::construct_schedule_DFS() {
             current_airport_ = get_arrival_airport(duty_periods_.back().tasks.back());
             /////////// DUTY PERIOD STATE ///////////
             Update_DutyPeriod();
-            
-            if (Check_Cycle_validity()) {
+            // the validity of teh Layover and Cycle should be checked after the DP is updated
+            // if(Check_LayOver_validity() && Check_Cycle_validity()){
+            if(Check_Cycle_validity()){
                 action_cycle();
                 Update_Cycle();
-                
-                // 递归搜索下一层
-                valid_branches++;
+                // --- Recurse ---
                 construct_schedule_DFS();
-                
-                // 恢复状态以探索其他分支
+                return ;
+            }
+            // if the action is not valid, backtrack to the previous state
+            else{
                 duty_periods_ = backup_duty_periods;
-                cycles_ = backup_cycles;
-                current_airport_ = backup_current_airport;
-                last_task_end_time_ = backup_last_task_end_time;
-            } else {
-                // 如果操作无效，恢复状态
-                duty_periods_ = backup_duty_periods;
-                cycles_ = backup_cycles;
+                //cycles_ = backup_cycles;
                 current_airport_ = backup_current_airport;
                 last_task_end_time_ = backup_last_task_end_time;
             }
+            
+            // // --- Backtrack by restoring state ---
+            // current_airport_ = backup_current_airport;
+            // last_task_end_time_ = backup_last_task_end_time;
+            // duty_periods_ = backup_duty_periods;
+            // cycles_ = backup_cycles;
         }
     }
 
-    // 如果没有找到有效的分支，检查当前路径是否为最佳路径
-    if (valid_branches == 0) {
-        update_best_path();
-    }
-    
+    // No valid chronological path found from this state, so we just return.
     return;
 }
 
-// 实现束搜索方法
-void CrewSchedule::construct_schedule_beam_search() {
-    // 创建优先队列，保存当前层的最佳路径
-    std::priority_queue<PathState, std::vector<PathState>, PathComparator> beam;
-    
-    // 初始路径
-    PathState initial_path;
-    initial_path.duty_periods = duty_periods_;
-    initial_path.cycles = cycles_;
-    initial_path.current_airport = current_airport_;
-    initial_path.last_task_end_time = last_task_end_time_;
-    initial_path.total_flight_time = calculate_total_flight_time(duty_periods_);
-    
-    beam.push(initial_path);
-    
-    // 最大搜索深度限制
-    for (int depth = 0; depth < MAX_DEPTH; depth++) {
-        // 保存下一层的候选路径
-        std::priority_queue<PathState, std::vector<PathState>, PathComparator> next_beam;
-        
-        // 处理当前层的每个路径
-        int paths_processed = 0;
-        while (!beam.empty() && paths_processed < BEAM_WIDTH) {
-            PathState current_path = beam.top();
-            beam.pop();
-            paths_processed++;
-            
-            // 恢复当前路径的状态
-            duty_periods_ = current_path.duty_periods;
-            cycles_ = current_path.cycles;
-            current_airport_ = current_path.current_airport;
-            last_task_end_time_ = current_path.last_task_end_time;
-            
-            // 查找所有可能的下一个任务
-            std::vector<std::variant<Flight, Bus, GroundDuty>> candidates;
-            for (const auto& flight : data_.getFlights()) {
-                if (flight.depaAirport == current_airport_ && flight.std >= last_task_end_time_) {
-                    candidates.emplace_back(flight);
-                }
-            }
-            
-            for (const auto& bus : data_.getBuses()) {
-                if (bus.depaAirport == current_airport_ && bus.td >= last_task_end_time_) {
-                    candidates.emplace_back(bus);
-                }
-            }
-            
-            // 如果没有候选任务，将当前路径视为可能的最佳路径
-            if (candidates.empty()) {
-                if (current_path.total_flight_time > best_path_.total_flight_time) {
-                    best_path_ = current_path;
-                }
-                continue;
-            }
-            
-            // 对候选任务进行排序（与DFS中相同的排序规则）
-            std::vector<std::string> layover_spots = data_.getLayoverStations();
-            bool maybe_the_last_flight = false;
-            
-            std::sort(candidates.begin(), candidates.end(), [&](const auto& a, const auto& b) {
-                bool a_is_flight = std::holds_alternative<Flight>(a);
-                bool b_is_flight = std::holds_alternative<Flight>(b);
-
-                if(maybe_the_last_flight){
-                    if (a_is_flight && b_is_flight) {
-                        const auto& flight_a = std::get<Flight>(a);
-                        const auto& flight_b = std::get<Flight>(b);
-                        bool a_returns_to_base = (flight_a.arriAirport == crew_.base);
-                        bool b_returns_to_base = (flight_b.arriAirport == crew_.base);
-                        if (a_returns_to_base != b_returns_to_base) {
-                            return a_returns_to_base;
-                        }
-                        bool a_is_layover = std::find(layover_spots.begin(), layover_spots.end(), flight_a.arriAirport) != layover_spots.end();
-                        bool b_is_layover = std::find(layover_spots.begin(), layover_spots.end(), flight_b.arriAirport) != layover_spots.end();
-                        if (a_is_layover != b_is_layover) {
-                            return a_is_layover;
-                        }
-                    }
-                }
-
-                if (a_is_flight != b_is_flight) return a_is_flight;
-
-                bool a_is_bus = std::holds_alternative<Bus>(a);
-                bool b_is_bus = std::holds_alternative<Bus>(b);
-
-                if (a_is_bus && !b_is_bus) return true;
-                if (!a_is_bus && b_is_bus) return false;
-
-                if (a_is_bus && b_is_bus) {
-                    const auto& bus_a = std::get<Bus>(a);
-                    const auto& bus_b = std::get<Bus>(b);
-                    bool a_to_hub = all_bases_.count(bus_a.arriAirport) > 0;
-                    bool b_to_hub = all_bases_.count(bus_b.arriAirport) > 0;
-                    if (a_to_hub != b_to_hub) {
-                        return a_to_hub;
-                    }
-                }
-                
-                return get_start_time(a) < get_start_time(b);
-            });
-            
-            // 尝试每个候选任务，最多尝试MAX_BRANCHES个
-            int valid_branches = 0;
-            for (auto& candidate_task : candidates) {
-                if (valid_branches >= MAX_BRANCHES) break;
-                
-                // 保存当前状态
-                std::vector<DutyPeriod> backup_duty_periods = duty_periods_;
-                std::vector<Cycle> backup_cycles = cycles_;
-                std::string backup_current_airport = current_airport_;
-                TimePoint backup_last_task_end_time = last_task_end_time_;
-                
-                // 检查操作有效性
-                if (Check_Action_validity(candidate_task)) {
-                    Action(candidate_task);
-                    // 更新全局状态
-                    last_task_end_time_ = get_end_time(duty_periods_.back().tasks.back());
-                    current_airport_ = get_arrival_airport(duty_periods_.back().tasks.back());
-                    Update_DutyPeriod();
-                    
-                    if (Check_Cycle_validity()) {
-                        action_cycle();
-                        Update_Cycle();
-                        
-                        // 创建新路径状态
-                        PathState new_path(duty_periods_, cycles_, current_airport_, 
-                                          last_task_end_time_, calculate_total_flight_time(duty_periods_));
-                        
-                        // 添加到下一层的候选路径中
-                        next_beam.push(new_path);
-                        valid_branches++;
-                        
-                        // 如果当前路径比最佳路径更好，更新最佳路径
-                        if (new_path.total_flight_time > best_path_.total_flight_time) {
-                            best_path_ = new_path;
-                        }
-                    }
-                    
-                    // 恢复状态以尝试下一个候选任务
-                    duty_periods_ = backup_duty_periods;
-                    cycles_ = backup_cycles;
-                    current_airport_ = backup_current_airport;
-                    last_task_end_time_ = backup_last_task_end_time;
-                }
-            }
-            
-            // 如果没有找到有效分支，当前路径可能是最佳路径
-            if (valid_branches == 0 && current_path.total_flight_time > best_path_.total_flight_time) {
-                best_path_ = current_path;
-            }
-        }
-        
-        // 如果下一层没有有效路径，搜索结束
-        if (next_beam.empty()) {
-            break;
-        }
-        
-        // 更新当前层为下一层
-        beam = next_beam;
-    }
-}
-
-void CrewSchedule::assign_tasks_to_crew() {
-    // 初始化最佳路径为空
-    best_path_ = PathState();
-    
-    // 执行束搜索而非DFS
-    construct_schedule_beam_search();
-    
-    // 应用找到的最佳路径
-    apply_best_path();
-    
-    // 确保最佳路径被反映到solution中
-    // 由于duty_periods_和cycles_是引用，它们已经被apply_best_path更新
-    // 但我们需要更新flight_assignments
-    
-    // 先清除该机组人员的所有航班分配
-    std::vector<std::string> flights_to_remove;
-    for(auto& [flight_id, assignments] : flight_assignments) {
-        for(auto it = assignments.begin(); it != assignments.end();) {
-            if(it->first == crew_.id) {
-                it = assignments.erase(it);
-            } else {
-                ++it;
-            }
-        }
-        
-        // 如果该航班没有分配给任何机组人员，记录下来以便后续删除
-        if(assignments.empty()) {
-            flights_to_remove.push_back(flight_id);
-        }
-    }
-    
-    // 删除没有分配的航班
-    for(const auto& flight_id : flights_to_remove) {
-        flight_assignments.erase(flight_id);
-    }
-    
-    // 重新添加最佳路径中的航班分配
-    for(const auto& dp : duty_periods_) {
-        for(const auto& task : dp.tasks) {
-            if(std::holds_alternative<Flight>(task)) {
-                const auto& flight = std::get<Flight>(task);
-                bool is_qualified = crew_.qualifications.find(flight.id) != crew_.qualifications.end();
-                flight_assignments[flight.id].push_back({crew_.id, is_qualified});
-            }
-        }
-    }
-}
-
-// 计算路径的总飞行时间
-std::chrono::minutes CrewSchedule::calculate_total_flight_time(const std::vector<DutyPeriod>& duty_periods) {
-    std::chrono::minutes total_time(0);
-    
-    for (const auto& dp : duty_periods) {
-        total_time += dp.total_flight_time;
-    }
-    
-    return total_time;
-}
-
-// 更新最佳路径
-void CrewSchedule::update_best_path() {
-    std::chrono::minutes current_flight_time = calculate_total_flight_time(duty_periods_);
-    
-    // 如果当前路径的总飞行时间更长，或者最佳路径还未初始化
-    if (best_path_.duty_periods.empty() || current_flight_time > best_path_.total_flight_time) {
-        best_path_.duty_periods = duty_periods_;
-        best_path_.cycles = cycles_;
-        best_path_.current_airport = current_airport_;
-        best_path_.last_task_end_time = last_task_end_time_;
-        best_path_.total_flight_time = current_flight_time;
-    }
-}
-
-// 应用最佳路径
-void CrewSchedule::apply_best_path() {
-    if (!best_path_.duty_periods.empty()) {
-        duty_periods_ = best_path_.duty_periods;
-        cycles_ = best_path_.cycles;
-        current_airport_ = best_path_.current_airport;
-        last_task_end_time_ = best_path_.last_task_end_time;
-    }
-}
 
 
-void CrewSchedule::delete_redundant_buses(){
-    // 如果没有duty periods，直接返回
-    if (duty_periods_.empty()) {
-        return;
-    }
-    
-    // 从最后一个duty period开始逆序遍历
-    for (int dp_idx = duty_periods_.size() - 1; dp_idx >= 0; --dp_idx) {
-        auto& dp = duty_periods_[dp_idx];
-        
-        // 从最后一个任务开始逆序遍历
-        for (int task_idx = dp.tasks.size() - 1; task_idx >= 0; --task_idx) {
-            const auto& task = dp.tasks[task_idx];
-            
-            // 检查当前任务是否为巴士任务
-            if (std::holds_alternative<Bus>(task)) {
-                // 删除巴士任务
-                dp.tasks.erase(dp.tasks.begin() + task_idx);
-                
-                // 更新duty period的统计信息
-                dp.taskCount--;
-                dp.total_task_time -= get_task_duration(task);
-                
-                // 如果duty period变为空，删除整个duty period
-                if (dp.tasks.empty()) {
-                    duty_periods_.erase(duty_periods_.begin() + dp_idx);
-                    break;
-                }
-            } else if (std::holds_alternative<Flight>(task)) {
-                // 遇到第一个航班任务，停止删除
-                return;
-            } else {
-                // 对于其他类型的任务（如GroundDuty），继续遍历
-                continue;
-            }
-        }
-    }
-}
+
+
+
     
    // --- Getter Helper Functions ---
 TimePoint get_start_time(const std::variant<Flight, Bus, GroundDuty>& task) {

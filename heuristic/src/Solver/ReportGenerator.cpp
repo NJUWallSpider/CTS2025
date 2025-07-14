@@ -9,6 +9,7 @@
 #include <sstream>
 #include <algorithm>
 #include <set>
+#include <unordered_set>
 
 bool ReportGenerator::validate_crew_flight_consistency(const SolutionState& solution, const std::string& output_path) {
     std::ofstream out(output_path);
@@ -127,13 +128,20 @@ inline std::string format_duration(const std::chrono::minutes& duration_mins) {
 }
 
 // Helper to print task details in a more structured way
-void print_task_details_pretty(std::ofstream& out, const std::variant<Flight, Bus, GroundDuty>& task) {
-    std::visit([&out](auto&& arg) {
+void print_task_details_pretty(std::ofstream& out, const std::variant<Flight, Bus, GroundDuty>& task, const std::map<std::string, std::vector<std::pair<std::string, bool>>> flight_assignments, std::string crew_id) {
+    std::visit([&out, &flight_assignments, &crew_id](auto&& arg) {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, Flight>) {
+            bool assigned = false;
+            for(const auto& assignment : flight_assignments.at(arg.id)){
+                if(assignment.first == crew_id){
+                    assigned = assignment.second;
+                    break;
+                }
+            }
             out << "    [" << format_time(arg.std) << " - " << format_time(arg.sta) << "] Flight " << arg.id
                 << "\t(" << arg.aircraftNo << ")"
-                << "\t(" << arg.depaAirport << " -> " << arg.arriAirport << ")\n";
+                << "\t(" << arg.depaAirport << " -> " << arg.arriAirport << ")"<< "\t"<< (assigned ? "Qualified" : "DDH")    <<"\n";
         } else if constexpr (std::is_same_v<T, Bus>) {
             out << "    [" << format_time(arg.td) << " - " << format_time(arg.ta) << "] Bus " << arg.id
                 << "\t(" << arg.depaAirport << " -> " << arg.arriAirport << ")\n";
@@ -164,14 +172,21 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
     out << "Report Generated: " << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S") << "\n";
     out << "Total Runtime:    " << runtime.count() << " seconds\n\n";
     out << "Best Score:       " << solution.score << "\n\n";
-
+    out << "Average Flight Hours: " << solution.avg_flight_hours << "\n\n";
+    out << "NFDP Count: " << solution.NFDP_count << "\n\n";
+    
     const auto& all_crews = data.getCrews();
     auto layover_spots = data.getLayoverStations();
     int NonLayover = 0;
     int total_duty_periods = 0;
     int NonBase_layover = 0;
     int Invalid_layover = 0;
-    for (const auto& [crew_id, duty_periods] : solution.crew_dutyperiods) {
+    std::unordered_set<std::string> Invalid_layover_set;
+    for (const auto& crew_id : solution.crew_assignment_order) {
+        if (solution.crew_dutyperiods.find(crew_id) == solution.crew_dutyperiods.end()) {
+            continue;
+        }
+        const auto& duty_periods = solution.crew_dutyperiods.at(crew_id);
         if (all_crews.find(crew_id) == all_crews.end()) continue;
         const auto& crew_data = all_crews.at(crew_id);
 
@@ -193,10 +208,13 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
             out << "  End:   " << format_time(duty_period.endTime) << "\n\n";
             if(!duty_period.tasks.empty()){
                 out << "    Layover Airport:  " << get_arrival_airport(duty_period.tasks.back()) << "\n";
-                out << "    Layover Validity:  " << (get_arrival_airport(duty_period.tasks.back()) == crew_data.base || std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) != layover_spots.end() ? "Yes" : "No") << "\n";
+                out << "    Layover Validity:  " << (std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) != layover_spots.end() ? "Yes" : "No") << "\n";
                 NonBase_layover += get_arrival_airport(duty_period.tasks.back()) != crew_data.base;
-                Invalid_layover += get_arrival_airport(duty_period.tasks.back()) != crew_data.base && std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) == layover_spots.end();
-
+                if(std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) == layover_spots.end()){
+                    Invalid_layover++;
+                    Invalid_layover_set.insert(get_arrival_airport(duty_period.tasks.back()));
+                   // std::cout << "Invalid Layover: " << crew_id << " " << (duty_period.is_FDuty ? "FDP" : "is not")<<"\tIndex: " << i << "\tTask count: " << duty_period.taskCount << "\tFlight count: " << duty_period.flightCount << "\tArrival airport: " << get_arrival_airport(duty_period.tasks.back()) << "\n";
+                }
             }
             total_duty_periods++;
             auto sorted_tasks = duty_period.tasks;
@@ -205,7 +223,7 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
             });
             
             for (const auto& task : sorted_tasks) {
-                print_task_details_pretty(out, task);
+                print_task_details_pretty(out, task,solution.flight_assignments,crew_id);
             }
             out << "\n";
 
@@ -225,35 +243,40 @@ void ReportGenerator::generate_schedule_report(const SolutionState& solution, co
             }
         }
         std::vector<Cycle> crew_cycles = solution.crew_cycles.find(crew_id)->second;
-        for(size_t i = 0; i < crew_cycles.size(); i++) {
+        // for(size_t i = 0; i < crew_cycles.size(); i++) {
             
-            if( i == 1){
-                auto rest_duration = std::chrono::duration_cast<std::chrono::minutes>(crew_cycles[i].startTime - crew_cycles[i-1].endTime);
-                out << "  --- Rest Period ---\n";
-                out << "  Duration: " << format_duration(rest_duration) << "\n";
-                out << "  Location: " << get_arrival_airport(crew_cycles[i-1].duty_periods.back().tasks.back()) << "\n\n";
-            }
+        //     if( i == 1){
+        //         auto rest_duration = std::chrono::duration_cast<std::chrono::minutes>(crew_cycles[i].startTime - crew_cycles[i-1].endTime);
+        //         out << "  --- Rest Period ---\n";
+        //         out << "  Duration: " << format_duration(rest_duration) << "\n";
+        //         out << "  Location: " << get_arrival_airport(crew_cycles[i-1].duty_periods.back().tasks.back()) << "\n\n";
+        //     }
 
-            const auto& cycle = crew_cycles[i];
-            out << "  === Cycle " << i + 1 << " ===\n";
-            auto cycle_duration = std::chrono::duration_cast<std::chrono::minutes>(cycle.endTime - cycle.startTime);
-            out << "  Duration: " << format_duration(cycle_duration) << "\n";
-            out << "  Start: " << format_time(cycle.startTime) << "\n";
-            out << "  End:   " << format_time(cycle.endTime) << "\n\n";
+        //     const auto& cycle = crew_cycles[i];
+        //     out << "  === Cycle " << i + 1 << " ===\n";
+        //     auto cycle_duration = std::chrono::duration_cast<std::chrono::minutes>(cycle.endTime - cycle.startTime);
+        //     out << "  Duration: " << format_duration(cycle_duration) << "\n";
+        //     out << "  Start: " << format_time(cycle.startTime) << "\n";
+        //     out << "  End:   " << format_time(cycle.endTime) << "\n\n";
 
-        }
+        // }
     }
     std::string directory = output_path.substr(0, output_path.find_last_of("/\\") + 1);
     std::ofstream out_layover_validity(directory + "layover_validity.txt");
     out_layover_validity << "Total Duty Periods: " << total_duty_periods << "\n";
     out_layover_validity << "Total Non-Base Layover: " << NonBase_layover << "\n";
     out_layover_validity << "Total Invalid Layover: " << Invalid_layover << "\n";
+    out_layover_validity << "Invalid Layover Set Size: " << Invalid_layover_set.size() << "\n";
+    out_layover_validity << "Invalid Layover Set: ";
+    for(const auto& layover : Invalid_layover_set){
+        out_layover_validity << layover << " ";
+    }
+    out_layover_validity << "\n";
     out_layover_validity << "Average Invalid Layover: " << (double)Invalid_layover / total_duty_periods << "\n";
     std::cout << "Schedule report generated at " << output_path << std::endl;
 }
 
 void ReportGenerator::generate_submission_csv(const SolutionState& solution, const std::string& output_path) {
-
     std::ofstream out(output_path);
     if (!out) {
         std::cerr << "Error: Could not open file " << output_path << " for writing." << std::endl;
@@ -283,6 +306,9 @@ void ReportGenerator::generate_submission_csv(const SolutionState& solution, con
                             }
                         }
                     } else if constexpr (std::is_same_v<T, Bus>) {
+                        if(arg.id == "999999"){
+                            return ;
+                        }
                         taskId = arg.id;
                         isDDH = true; // Bus is always DDH
                     } else if constexpr (std::is_same_v<T, GroundDuty>) {
@@ -298,4 +324,128 @@ void ReportGenerator::generate_submission_csv(const SolutionState& solution, con
     std::cout << "Submission CSV generated at " << output_path << std::endl;
 } 
 
+void ReportGenerator::generate_assignment_report(const SolutionState& solution, const DataLoader& data, const std::string& output_path) {
+    std::ofstream out(output_path);
+    if (!out) {
+        std::cerr << "Error: Could not open file " << output_path << " for writing." << std::endl;
+        return;
+    }
+
+    // 1. Get all flights and group by aircraftNo
+    const auto& all_flights = data.getFlights();
+    std::map<std::string, std::vector<Flight>> flights_by_aircraft;
+    for (const auto& flight_obj : all_flights) {
+        flights_by_aircraft[flight_obj.aircraftNo].push_back(flight_obj);
+    }
+
+    // 2. Sort flights within each aircraft group chronologically and create a flat list
+    std::vector<Flight> sorted_flights;
+    std::vector<std::string> aircraft_order;
+    for (auto const& [aircraft_no, flights] : flights_by_aircraft) {
+        aircraft_order.push_back(aircraft_no);
+    }
+    std::sort(aircraft_order.begin(), aircraft_order.end());
+
+    for (const auto& aircraft_no : aircraft_order) {
+        auto& flights = flights_by_aircraft.at(aircraft_no);
+        std::sort(flights.begin(), flights.end(), [](const Flight& a, const Flight& b) {
+            return a.std < b.std;
+        });
+        sorted_flights.insert(sorted_flights.end(), flights.begin(), flights.end());
+    }
+
+    // 3. Get all crews and sort them by ID
+    const auto& all_crews_map = data.getCrews();
+    std::vector<std::string> crew_ids;
+    for (const auto& crew_id : solution.crew_assignment_order) {
+        crew_ids.push_back(crew_id);
+    }
+    std::sort(crew_ids.begin(), crew_ids.end());
+
+    // 4. Create a lookup for flight assignments
+    std::map<std::string, std::unordered_set<std::string>> flight_to_crews;
+    for (const auto& [flight_id, assignments] : solution.flight_assignments) {
+        for (const auto& assignment : assignments) {
+            if(assignment.second) {
+            flight_to_crews[flight_id].insert(assignment.first);
+        }
+        }
+    }
+
+    // 5. Write the report in CSV format
+
+    // Header row 1: Aircraft Numbers
+    out << ",";
+    for (size_t i = 0; i < sorted_flights.size(); ++i) {
+        out << sorted_flights[i].aircraftNo;
+        if (i < sorted_flights.size() - 1) {
+            out << ",";
+        }
+    }
+    out << "\n";
+
+    // Header row 2: Flight IDs
+    out << "Crew ID,";
+    for (size_t i = 0; i < sorted_flights.size(); ++i) {
+        out << sorted_flights[i].id;
+        if (i < sorted_flights.size() - 1) {
+            out << ",";
+        }
+    }
+    out << "\n";
+
+    // Data rows: Crew assignments
+    for (const auto& crew_id : crew_ids) {
+        bool has_assignment = false;
+        for (const auto& flight : sorted_flights) {
+            if (flight_to_crews.count(flight.id) && flight_to_crews.at(flight.id).count(crew_id)) {
+                has_assignment = true;
+                break;
+            }
+        }
+        if (!has_assignment) continue;
+
+        out << crew_id << ",";
+        for (size_t i = 0; i < sorted_flights.size(); ++i) {
+            const auto& flight = sorted_flights[i];
+            bool assigned = flight_to_crews.count(flight.id) && flight_to_crews.at(flight.id).count(crew_id);
+            out << (assigned ? "1" : "0");
+            if (i < sorted_flights.size() - 1) {
+                out << ",";
+            }
+        }
+        out << "\n";
+    }
+
+    std::cout << "Assignment report CSV generated at " << output_path << std::endl;
+} 
+
+void ReportGenerator::generate_crew_dutyperiod_report(const SolutionState& solution, const DataLoader& data, const std::string& output_path) {
+    std::ofstream out(output_path);
+    if (!out) {
+        std::cerr << "Error: Could not open file " << output_path << " for writing." << std::endl;
+        return;
+    }
+    out << "Crew ID,Base,Count of Non-Base Layover,Count of Invalid Layover\n";
+
+    const auto& layover_spots = data.getLayoverStations();
+    for(const auto& crew_id : solution.crew_assignment_order){
+        int count_nonbase_layover = 0;
+        int count_invalid_layover = 0;
+        const auto& duty_periods = solution.crew_dutyperiods.at(crew_id);
+        for(const auto& duty_period : duty_periods){
+            if(duty_period.tasks.empty()){
+                continue;
+            }
+            if(std::find(layover_spots.begin(), layover_spots.end(), get_arrival_airport(duty_period.tasks.back())) == layover_spots.end()){
+                count_invalid_layover++;
+            }
+            if(get_arrival_airport(duty_period.tasks.back()) != data.getCrews().at(crew_id).base){
+                count_nonbase_layover++;
+            }
+        }
+        out << crew_id << "," << data.getCrews().at(crew_id).base << "," << count_nonbase_layover << "," << count_invalid_layover << "\n";
+    }
+    std::cout << "Crew duty period report generated at " << output_path << std::endl;
+}
 

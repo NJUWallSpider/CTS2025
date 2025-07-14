@@ -260,12 +260,29 @@ void CrewSchedule::action_cycle(){
         }
         else{
             // add the current duty period to the current cycle
-            latest_cycle.duty_periods.emplace_back(latest_duty_period);
+            if(latest_cycle.duty_periods.size() > 0){
+                DutyPeriod& current_last_duty_period = latest_cycle.duty_periods.back();
+                if(current_last_duty_period.endTime == latest_duty_period.endTime){
+                    return ;
+                }
+            }
+            else{
+                latest_cycle.duty_periods.emplace_back(latest_duty_period);
+            }
+            
         }
 
     }
     else{
-        latest_cycle.duty_periods.emplace_back(latest_duty_period);
+        if(latest_cycle.duty_periods.size() > 0){
+            DutyPeriod& current_last_duty_period = latest_cycle.duty_periods.back();
+            if(current_last_duty_period.endTime == latest_duty_period.endTime){
+                return ;
+            }
+        }
+        else{
+            latest_cycle.duty_periods.emplace_back(latest_duty_period);
+        }
     }
 
 

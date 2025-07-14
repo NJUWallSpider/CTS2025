@@ -13,14 +13,11 @@ Solver::Solver(int argc, char* argv[]) {}
 
 void Solver::run() {    
 
-    std::string data_version = "0711";
+    std::string data_version = "0623";
     std::filesystem::path data_dir = std::filesystem::path("data") / data_version;
-    // std::filesystem::path heuristic_path = std::filesystem::path("exact_solver") / "report" / data_version / "rosterResult.csv";
-    std::filesystem::path heuristic_path = std::filesystem::path("/home/dbxp/new-cts/empty_submission.csv");
-    const DataLoader data_loader(data_dir, heuristic_path);
-    std::string start_str = "2025/1/31 00:00";
+    const DataLoader data_loader(data_dir, data_version);
 
-    SolutionConstructor solution_constructor(data_loader, start_str);
+    SolutionConstructor solution_constructor(data_loader);
     SolutionState best_solution;
 
     // 第一阶段：生成初始解
@@ -33,8 +30,12 @@ void Solver::run() {
     ReportGenerator::generate_schedule_report(best_solution, data_loader, directory + "schedule_report.txt", start_time);
     ReportGenerator::generate_submission_csv(best_solution, directory + "rosterResult.csv");
     ReportGenerator::validate_crew_flight_consistency(best_solution, directory + "crew_flight_consistency.txt");
-    
+    ReportGenerator::generate_assignment_report(best_solution, data_loader, directory + "assignment_report.csv");
+    ReportGenerator::generate_crew_dutyperiod_report(best_solution, data_loader, directory + "crew_dutyperiod_report.csv");
     std::cout << "初始解分数: " << best_solution.score << std::endl;
+
+
+
     
     // 第二阶段：使用多线程模拟退火的多路径破坏与重建优化
     std::cout << "开始多线程模拟退火多路径优化..." << std::endl;
@@ -47,11 +48,11 @@ void Solver::run() {
     }
     
     // 模拟退火参数
-    int num_paths = 8;                // 探索路径数量
+    int num_paths = 16;                // 探索路径数量
     int num_threads = available_threads; // 使用的线程数
-    int max_iterations = 10000;        // 最大迭代次数
-    double initial_temperature = 1500.0; // 初始温度
-    double cooling_rate = 0.95;       // 冷却率
+    int max_iterations = 15000;        // 最大迭代次数
+    double initial_temperature = 700.0; // 初始温度
+    double cooling_rate = 0.98;       // 冷却率
     double min_temperature = 0.01;    // 最小温度
     double initial_ruin_percentage = 0.05; // 初始破坏比例
     
@@ -74,6 +75,6 @@ void Solver::run() {
     ReportGenerator::generate_schedule_report(best_solution, data_loader, directory + "schedule_report.txt", start_time);
     ReportGenerator::generate_submission_csv(best_solution, directory + "rosterResult.csv");
     ReportGenerator::validate_crew_flight_consistency(best_solution, directory + "crew_flight_consistency.txt");
-    
+
     std::cout << "优化完成，最终解分数: " << best_solution.score << std::endl;
 }

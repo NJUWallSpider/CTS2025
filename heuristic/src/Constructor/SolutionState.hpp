@@ -18,6 +18,9 @@
  * Higher scores indicate better quality solutions based on optimization criteria.
  */
 struct SolutionState {
+    // Stores the sequence of crew IDs in the order they were assigned.
+    std::vector<std::string> crew_assignment_order;
+
     // Maps a crew ID to their assigned sequence of duty periods.
     std::map<std::string, std::vector<DutyPeriod>> crew_dutyperiods;
 
@@ -31,6 +34,8 @@ struct SolutionState {
 
     // The overall score of this solution. Higher is better.
     double score = 0.0;
+    double avg_flight_hours = 0.0;
+    int NFDP_count = 0;
 
     // TODO: Add methods to calculate score, check validity, etc.
 }; 

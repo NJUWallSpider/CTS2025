@@ -1,12 +1,6 @@
-<<<<<<< HEAD
-Total Duty Periods: 1426
-Total Non-Layover: 281
-Total Non-Base Layover: 1102
-Total Invalid Layover: 281
-Average Invalid Layover: 0.197055
-=======
-Total Duty Periods: 1617
-Total Non-Base Layover: 1251
-Total Invalid Layover: 262
-Average Invalid Layover: 0.162028
->>>>>>> origin/Heuristic-SA
+Total Duty Periods: 1421
+Total Non-Base Layover: 1009
+Total Invalid Layover: 223
+Invalid Layover Set Size: 40
+Invalid Layover Set: SRWN LAAG VHLB KREM KDAP HMXY FTVG QUIP TUJZ XLHA YIDI ZDHU ZJCG VUWJ NBCQ HIUP HUYM RHHB UXVH MPYS FGIR FVJZ XCCH PNNF PZYH AFPF OKJK DYUE SFRI DSQK LFOL HEXD ZOYW VOXP XLOC UFCB NTCO YAFY KDAX YITW 
+Average Invalid Layover: 0.156932

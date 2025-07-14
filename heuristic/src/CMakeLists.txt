@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(heuristic VERSION 1.0 LANGUAGES CXX)
 
-set(CMAKE_C_COMPILER "/usr/bin/gcc-13")
-set(CMAKE_CXX_COMPILER "/usr/bin/g++-13")
-
 # 设置C++标准
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,7 +13,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # --- 定义可执行文件 ---
 # 定义一个变量来存储你的可执行文件名，方便重用
-set(EXECUTABLE_NAME heuristic)
+set(EXECUTABLE_NAME Heuristic)
 
 # 主程序
 # 收集指定目录下的所有源文件

@@ -8,7 +8,6 @@
 #include <chrono>
 #include <limits>
 #include <unordered_set>
-#include <queue> // 添加优先队列支持
 
 struct SolutionState; // Forward Declaration
 
@@ -79,21 +78,13 @@ public:
     explicit CrewSchedule(const DataLoader& data, const Crew& crew, 
             std::vector<DutyPeriod>& crew_duty_periods, 
             std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments,
-            std::vector<Cycle>& cycles,
-            std::string start_str);
+            std::vector<Cycle>& cycles);
 
     // 核心构造流程
     void assign_tasks_to_crew();
 
     // Main construction method
     void construct_schedule_DFS();
-    
-    // 新增束搜索方法
-    void construct_schedule_beam_search();
-
-    void delete_redundant_buses();
-
-    std::string start_str;
 
 private:
     const DataLoader& data_; 
@@ -103,50 +94,10 @@ private:
     
     std::vector<Cycle>& cycles_; // List of cycles for rule checking
     /////
-    std::string start_str_;
+    // std::string start_str_;
 
-    // 保存最佳路径信息
-    struct PathState {
-        std::vector<DutyPeriod> duty_periods;
-        std::vector<Cycle> cycles;
-        std::string current_airport;
-        TimePoint last_task_end_time;
-        std::chrono::minutes total_flight_time = std::chrono::minutes(0);
-        
-        // 为束搜索添加评分函数
-        double score() const {
-            return total_flight_time.count();
-        }
-        
-        // 添加构造函数以方便创建
-        PathState() = default;
-        
-        PathState(const std::vector<DutyPeriod>& dps, const std::vector<Cycle>& cycs, 
-                 const std::string& airport, const TimePoint& end_time, 
-                 const std::chrono::minutes& flight_time)
-            : duty_periods(dps), cycles(cycs), current_airport(airport),
-              last_task_end_time(end_time), total_flight_time(flight_time) {}
-    };
-    
-    // 束搜索比较器
-    struct PathComparator {
-        bool operator()(const PathState& a, const PathState& b) const {
-            return a.score() < b.score();  // 最大堆，分数高的优先
-        }
-    };
-    
-    PathState best_path_; // 保存总飞行时间最长的路径
-    const int MAX_BRANCHES = 2; // 每层DFS探索的最大分支数
-    const int BEAM_WIDTH = 10000;   // 束搜索宽度
-    const int MAX_DEPTH = 20;   // 最大搜索深度
-    
-    // 计算路径的总飞行时间
-    std::chrono::minutes calculate_total_flight_time(const std::vector<DutyPeriod>& duty_periods);
-    // 更新最佳路径
-    void update_best_path();
-    // 应用最佳路径
-    void apply_best_path();
 
+    
     // SolutionState& solution_;
     //
     // std::vector<std::variant<Flight, Bus>> schedule_; // Chronological list of tasks
@@ -180,7 +131,8 @@ private:
     const int PROBABILITY_REQUIRE_QUALIFICATION = 100;
     const std::chrono::hours MIN_LEFT_TIME_FOR_FDUTY = std::chrono::hours(2);
     //
-
+    const std::string DETECTOR_BUS_ID = "999999";
+    
     void initialize_crew_state();
     void initialize_duty_period(DutyPeriod& duty_period);
     void initialize_cycle(Cycle& cycle);
@@ -211,13 +163,19 @@ private:
     bool Check_Cycle_validity();
     bool Check_Schedule_validity();
     bool Check_LayOver_validity();
+    //
+    bool check_return_validity(const Flight& candidate_flight);
    
     //=== 
     bool try_positioning(const Flight& flight);
+    void try_position2Layover();
     GroundDuty get_lastest_ground_duty(); 
 
     //
     TimePoint get_rest_start_point();
+    //
+
+    std::string find_unassigned_qualified_flight();
 
 
 

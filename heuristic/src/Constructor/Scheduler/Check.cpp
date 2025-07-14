@@ -137,8 +137,13 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
         // }
         
         //1. start a new FDP
-        if(candidate_flight.std - lastest_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
-            return true;
+        if(candidate_flight.std - lastest_duty_period.endTime > MIN_REST_BEFORE_FDUTY ){
+            // if(std::chrono::floor<std::chrono::days>(candidate_flight.sta) - std::chrono::floor<std::chrono::days>(candidate_flight.std)  > std::chrono::hours(0)){
+            //     return false;
+            // }
+            
+                return true;
+            
         }
 
 
@@ -171,7 +176,21 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
                 if(get_start_time(candidate_flight) - last_task_end_time_ < MIN_CONNECTION_TIME_FLIGHT){
                     return false;
                 }
+                // else{
+                //     if(lastest_duty_period.flightCount % 2 == 0){
+                //         if(!check_return_validity(candidate_flight)){
+                //             return false;
+                //         }
+                //     }
+                // }
             }
+            // else{
+            //     if(lastest_duty_period.flightCount % 2 == 0){
+            //         if(!check_return_validity(candidate_flight)){
+            //             return false;
+            //         }
+            //     }
+            // }
         }
 
         // // check the layover validity (using a threshold)
@@ -190,19 +209,23 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
         if(candidate_flight.std - get_end_time(lastest_duty_period.tasks.back()) < MIN_REST_BEFORE_FDUTY){
             return false;
         }
+            //         if(std::chrono::floor<std::chrono::days>(candidate_flight.sta) - std::chrono::floor<std::chrono::days>(candidate_flight.std)  > std::chrono::hours(0)){
+            //     return false;
+            // }
+
         return true;
 
     }
     // If the lastest duty period is a NFDuty
     else if(!lastest_duty_period.is_FDuty){
+        if(duty_periods_.size() < 2){
+            return true;
+        }
         if(candidate_flight.std - lastest_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
             return true;
         }
-        else{
-            if(candidate_flight.sta - lastest_duty_period.startTime < MAX_DUTY_TIME_PER_FLIGHT_DUTY && candidate_flight.std - lastest_duty_period.endTime > MIN_CONNECTION_TIME_BUS){
-                if(duty_periods_.size() < 2){
-                    return true;
-                }
+        else if(candidate_flight.sta - lastest_duty_period.startTime < MAX_DUTY_TIME_PER_FLIGHT_DUTY && candidate_flight.std - lastest_duty_period.endTime > MIN_CONNECTION_TIME_BUS){
+                
                 const auto& second_lastest_duty_period = duty_periods_[duty_periods_.size() - 2];
                 if(lastest_duty_period.startTime - get_end_time(second_lastest_duty_period.tasks.back()) < MIN_REST_BEFORE_FDUTY){
                     return false;
@@ -211,10 +234,10 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
                     return true;
                 }
             }
-            else{
-                return false;  }
+        else{
+            return false;  }
 
-        }
+        
     }
     return true;
 }
@@ -222,18 +245,23 @@ bool CrewSchedule::check_Flight_validity(const Flight& candidate_flight){
 // according to the current logic, the bus candidates will be considered only if the flight candidates are all infeasible.
 bool CrewSchedule::Check_ddh_Bus_validity(const Bus& candidate_bus){
     // if last P empty, return true
-    if(duty_periods_.empty()){
+    if(duty_periods_.back().tasks.empty()){
+        return true;
+    }
+    if(candidate_bus.id == DETECTOR_BUS_ID){
         return true;
     }
     auto layover_spots = data_.getLayoverStations();
     // get the lastest duty period
     const auto& latest_duty_period = duty_periods_.back();
+
     // if the lastest duty period is a FDuty and extendable
     if(latest_duty_period.is_FDuty && latest_duty_period.can_be_extended){
 
-        // if(current_airport_ == crew_.base){
-        //     return false;
-        // }
+        if(current_airport_ == crew_.base && candidate_bus.arriAirport != crew_.base){
+            return false;
+        }
+
         if(candidate_bus.td - latest_duty_period.endTime > MIN_REST_BEFORE_FDUTY){
             return true;
         }
@@ -247,6 +275,7 @@ bool CrewSchedule::Check_ddh_Bus_validity(const Bus& candidate_bus){
         return false;
     }
     else if(latest_duty_period.is_FDuty && !latest_duty_period.can_be_extended){
+
         // start a new NFDP with a probability
         if(!latest_duty_period.tasks.empty()){
             std::random_device rd;
@@ -269,13 +298,32 @@ bool CrewSchedule::Check_ddh_Bus_validity(const Bus& candidate_bus){
     }
     // if the lastest duty period is a NFDuty
     else{
-        // the probability will gradiently decreased as the number of bus in the NFDuty increases
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dis(0, 99);
-        if(dis(gen) < PROBABILITY_ADD_POSITIONING - latest_duty_period.taskCount * 10){
+
+        std::string unassigned_qualified_flight_id = find_unassigned_qualified_flight();
+
+        Flight unassigned_qualified_flight;
+        for(const auto& flight : data_.getFlights()){
+            if(flight.id == unassigned_qualified_flight_id){
+                unassigned_qualified_flight = flight;
+                break;
+            }
+        }
+        if(unassigned_qualified_flight.depaAirport == candidate_bus.arriAirport || candidate_bus.arriAirport == crew_.base){
             return true;
         }
+        else{
+            return false;
+        }
+
+        
+
+        // // the probability will gradiently decreased as the number of bus in the NFDuty increases
+        // std::random_device rd;
+        // std::mt19937 gen(rd());
+        // std::uniform_int_distribution<> dis(0, 99);
+        // if(dis(gen) < PROBABILITY_ADD_POSITIONING - latest_duty_period.taskCount * 10){
+        //     return true;
+        // }
     }
     return false;
 }
@@ -480,4 +528,51 @@ TimePoint CrewSchedule::get_rest_start_point(){
     }
 
     return rest_start_time;
+}
+
+std::string CrewSchedule::find_unassigned_qualified_flight(){
+
+    Flight temp_flight;
+    for(const auto& flight_id: crew_.qualifications){
+        if(flight_assignments.find(flight_id) == flight_assignments.end()){
+            return flight_id;
+        }
+    }
+    return "";
+}   
+
+bool CrewSchedule::check_return_validity(const Flight& candidate_flight){
+    DutyPeriod& last_duty_period = duty_periods_.back();
+    if(last_duty_period.tasks.empty()){
+        return true;
+    }
+    if(last_duty_period.flightCount % 2 == 0){
+        // get the next flight in the same aircraft behind the candidate flight
+        const auto& aircraft_flights = data_.getAircraftToFlights().at(candidate_flight.aircraftNo);
+        
+        auto next_flight_it = std::find_if(aircraft_flights.begin(), aircraft_flights.end(),
+            [&candidate_flight](const Flight& f) {
+                return f.std > candidate_flight.std;
+            });
+
+        if(next_flight_it == aircraft_flights.end()){
+            return true;
+        }
+
+        const Flight& next_flight = *next_flight_it;
+        //////
+        if(next_flight.arriAirport != crew_.base){
+            return false;
+        }
+        else{
+            if(next_flight.sta - last_duty_period.startTime > MAX_DUTY_TIME_PER_FLIGHT_DUTY){
+                return false;
+            }
+            if(std::chrono::minutes(next_flight.flyTime_mins + candidate_flight.flyTime_mins) + last_duty_period.total_flight_time > MAX_FLY_TIME_PER_DUTY){
+                return false;
+            }
+        }
+        return true;
+    }
+    return true;
 }

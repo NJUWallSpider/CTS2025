@@ -73,22 +73,80 @@ void CrewSchedule::Update_DutyPeriod(){
         if(std::holds_alternative<Bus>(duty_period.tasks.back())){
             duty_period.can_be_extended = false;
         }
-        else if(std::holds_alternative<Flight>(duty_period.tasks.back())){
-            Flight last_flight = std::get<Flight>(duty_period.tasks.back());
-            // the last flight is a positioning task
-            if(std::find(crew_.qualifications.begin(), crew_.qualifications.end(), last_flight.id) == crew_.qualifications.end()){
-                duty_period.can_be_extended = false;
-            }
-        }
+        // else if(std::holds_alternative<Flight>(duty_period.tasks.back())){
+        //     Flight last_flight = std::get<Flight>(duty_period.tasks.back());
+        //     // the last flight is a positioning task
+        //     std::vector<std::pair<std::string, bool>> last_flight_assignments = flight_assignments.at(last_flight.id);
+        //     for(auto assignment:last_flight_assignments){
+        //         if(assignment.first == crew_.id){
+        //             if(assignment.second){
+        //                 duty_period.can_be_extended = true;
+        //             }
+        //             else{
+        //                 duty_period.can_be_extended = false;
+        //             }
+        //         }
+        //     }
+        // }
     }
     // || (!(duty_period.is_FDuty && std::chrono::hours(2) + duty_period.total_flight_time > MAX_FLY_TIME_PER_DUTY))
     // || (!(duty_period.is_FDuty && std::chrono::hours(2) + duty_period.total_task_time > MAX_DUTY_TIME_PER_FLIGHT_DUTY));
 
-    // set the previous duties' all unextendable
-    for(int i = 0; i < duty_periods_.size() - 1; i++){
+    // set the previous duties' all unextendable and remove duties with flight time < 5 hours
+    auto layover_spots = data_.getLayoverStations();
+    for(int i = duty_periods_.size() - 2; i >= 0; i--){
         duty_periods_[i].can_be_extended = 0;
     }
+
+    // // for(int i = duty_periods_.size() - 2; i >= 0; i--){
+    // if(duty_periods_.size() <= 1){ return ;}
+
+    // // Get arrival airport of last task in ended duty period
+    // std::string arrival_airport;
+    // if(duty_periods_[duty_periods_.size() - 2].tasks.empty()){return ;}
     
+    // DutyPeriod& second_last_duty_period = duty_periods_[duty_periods_.size() - 2];
+    // auto& last_task = second_last_duty_period.tasks.back();
+    // arrival_airport = get_arrival_airport(last_task);
+    // bool invalid_end = false;
+    // Cycle& last_cycle = cycles_.back();
+
+    // while(std::find(layover_spots.begin(), layover_spots.end(), arrival_airport) == layover_spots.end()){
+    //     invalid_end = true;
+    //     ///////////
+    //     if(std::holds_alternative<Flight>(last_task)){
+    //         flight_assignments.erase(std::get<Flight>(last_task).id);
+    //     }
+    //     last_task_end_time_ = get_start_time(last_task);
+    //     second_last_duty_period.tasks.pop_back();
+    //     //last_cycle.duty_periods.pop_back();
+    //     //////////////
+    //     /////////////
+
+    //     if(duty_periods_.size() > 2 && second_last_duty_period.tasks.empty()){
+    //         duty_periods_.erase(duty_periods_.begin() + duty_periods_.size() - 2);
+    //         break;
+    //     }
+    //     else if(duty_periods_.size() == 2 && second_last_duty_period.tasks.empty()){
+    //         break;
+    //     }
+    //     else{
+    //         last_task =  second_last_duty_period.tasks.back();
+    //         arrival_airport = get_arrival_airport(last_task);
+    //         //////////////
+    //         current_airport_ = arrival_airport;
+    //     }
+
+    // }
+
+    // if(invalid_end){
+    //     duty_periods_.pop_back(); /// the last one 
+    //     Update_DutyPeriod();
+    // }
+
+    
+    
+
     }
 
 // update the cycle info acorrding to the current duty periods
@@ -110,3 +168,33 @@ void CrewSchedule::Update_Cycle(){
     // 3. update the cycle can_be_extended flag
     // if the calendar days of the cycle is less than 4, then the cycle can be extended
 }
+
+// void CrewSchedule::try_position2Layover(){
+//     DutyPeriod& last_duty_period = duty_periods_.back();
+
+//     // get the lastest task
+//     std::variant<Flight, Bus, GroundDuty>& lastest_task = last_duty_period.tasks.back();
+//     auto layover_spots = data_.getLayoverStations();
+//     // firstly, try to find a BUS (A->B) 
+//     for(const auto& bus : data_.getBuses()){
+
+//         if(bus.depaAirport == current_airport_ && std::find(layover_spots.begin(), layover_spots.end(), bus.arriAirport) != layover_spots.end() && bus.td >= last_task_end_time_ && bus.ta <= get_start_time(flight)){
+//                 // add the first found bus to the last duty period
+//                 if(Check_ddh_Bus_validity(bus)){
+//                     action_add_bus(bus);
+//                     // 1. update the last task end time
+//                     last_task_end_time_ = get_end_time(duty_periods_.back().tasks.back());
+//                     // 2. update the current airport
+//                     current_airport_ = get_arrival_airport(duty_periods_.back().tasks.back());
+//                     Update_DutyPeriod();
+//                     return true;
+//                 }
+//         }
+
+        
+//     }
+//     return false;
+
+        
+    
+// }
