@@ -1,3 +1,0 @@
-/home/ubuntu/new-cts/build/CMakeFiles/ExactSolver.dir
-/home/ubuntu/new-cts/build/CMakeFiles/edit_cache.dir
-/home/ubuntu/new-cts/build/CMakeFiles/rebuild_cache.dir

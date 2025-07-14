@@ -136,8 +136,8 @@ private:
     };
     
     PathState best_path_; // 保存总飞行时间最长的路径
-    const int MAX_BRANCHES = 2; // 每层DFS探索的最大分支数
-    const int BEAM_WIDTH = 10000;   // 束搜索宽度
+    const int MAX_BRANCHES = 1; // 每层DFS探索的最大分支数
+    const int BEAM_WIDTH = 10;   // 束搜索宽度
     const int MAX_DEPTH = 20;   // 最大搜索深度
     
     // 计算路径的总飞行时间

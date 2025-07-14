@@ -511,6 +511,6 @@ def calculate_score(data_path, submission_path):
 # --- 程序入口 ---
 if __name__ == '__main__':
     # 将'submission.csv'替换为你的提交文件名
-    data_path = '/home/ubuntu/new-cts/data/0703/'
-    submission_file = '/home/ubuntu/new-cts/result_0703.csv'
+    data_path = '/home/dbxp/new-cts/data/0623/'
+    submission_file = '/home/dbxp/new-cts/result_0623.csv'
     calculate_score(data_path, submission_file)

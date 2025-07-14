@@ -330,7 +330,7 @@ void CrewSchedule::assign_tasks_to_crew() {
     best_path_ = PathState();
     
     // 执行束搜索而非DFS
-    construct_schedule_beam_search();
+    construct_schedule_DFS();
     
     // 应用找到的最佳路径
     apply_best_path();

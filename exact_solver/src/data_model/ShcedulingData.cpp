@@ -132,44 +132,54 @@ void SchedulingData::_load_flights(const std::filesystem::path& file_path) {
 }
 
 void SchedulingData::_load_buses(const std::filesystem::path& file_path) {
+    std::unordered_set<std::string> flight_airports;
+    for (const auto& flight : flights_) {
+        flight_airports.insert(flight.second.depa_airport);
+        flight_airports.insert(flight.second.arri_airport);
+    }
+
+
     io::CSVReader<5> in(file_path.string());
     in.read_header(io::ignore_extra_column, "id", "depaAirport", "arriAirport", "td", "ta");
 
     std::string id, depa, arri, td_str, ta_str;
     int flyTime;
     while(in.read_row(id, depa, arri, td_str, ta_str)) {
-        buses_.emplace(id, Bus{
-            id, depa, arri, 
-            string_to_time_point(td_str), 
-            string_to_time_point(ta_str)
-        });
+        if (flight_airports.find(depa) != flight_airports.end() && 
+        flight_airports.find(arri) != flight_airports.end()) {
+            buses_.emplace(id, Bus{
+                id, depa, arri, 
+                string_to_time_point(td_str), 
+                string_to_time_point(ta_str)
+            });
+        }
     }
     
     // 如果总任务数量超过阈值，随机删除多余的bus
-    if (buses_.size() + flights_.size() > max_tasks_threshold_) {
-        std::cout << "Bus数量(" << buses_.size() << ") + 航班数量(" << flights_.size() 
-                 << ")超过阈值" << max_tasks_threshold_ << "，随机删除多余的bus..." << std::endl;
+    // if (buses_.size() + flights_.size() > max_tasks_threshold_) {
+    //     std::cout << "Bus数量(" << buses_.size() << ") + 航班数量(" << flights_.size() 
+    //              << ")超过阈值" << max_tasks_threshold_ << "，随机删除多余的bus..." << std::endl;
         
-        // 将所有bus ID放入vector中
-        std::vector<std::string> bus_ids;
-        bus_ids.reserve(buses_.size());
-        for (const auto& bus : buses_) {
-            bus_ids.push_back(bus.first);
-        }
+    //     // 将所有bus ID放入vector中
+    //     std::vector<std::string> bus_ids;
+    //     bus_ids.reserve(buses_.size());
+    //     for (const auto& bus : buses_) {
+    //         bus_ids.push_back(bus.first);
+    //     }
         
-        // 随机打乱顺序
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(bus_ids.begin(), bus_ids.end(), g);
+    //     // 随机打乱顺序
+    //     std::random_device rd;
+    //     std::mt19937 g(rd());
+    //     std::shuffle(bus_ids.begin(), bus_ids.end(), g);
         
-        // 删除多余的bus
-        size_t to_remove = buses_.size() + flights_.size() - max_tasks_threshold_;
-        for (size_t i = 0; i < to_remove; ++i) {
-            buses_.erase(bus_ids[i]);
-        }
+    //     // 删除多余的bus
+    //     size_t to_remove = buses_.size() + flights_.size() - max_tasks_threshold_;
+    //     for (size_t i = 0; i < to_remove; ++i) {
+    //         buses_.erase(bus_ids[i]);
+    //     }
         
-        std::cout << "已随机删除 " << to_remove << " 个bus，剩余 " << buses_.size() << " 个bus。" << std::endl;
-    }
+    //     std::cout << "已随机删除 " << to_remove << " 个bus，剩余 " << buses_.size() << " 个bus。" << std::endl;
+    // }
 }
 
 void SchedulingData::_load_layover_stations(const std::filesystem::path& file_path) {
@@ -221,18 +231,28 @@ void SchedulingData::_link_crew_qualifications(const std::filesystem::path& file
         }
     } 
 
-    // 删除没有资质的机组
-    size_t removed_count = 0;
-    for (auto it = crews_.begin(); it != crews_.end();) {
-        if (it->second.qualified_flights.empty()) {
-            it = crews_.erase(it);
-            removed_count++;
-        } else {
-            ++it;
-        }
-    }
+    // // 删除没有资质的机组
+    // size_t removed_count = 0;
+    // for (auto it = crews_.begin(); it != crews_.end();) {
+    //     if (!it->second.qualified_flights.empty()) {
+    //         it = crews_.erase(it);
+    //         removed_count++;
+    //     } else {
+    //         ++it;
+    //     }
+    // }
+
+    // for (auto it = crews_.begin(); it != crews_.end();) {
+    //     if (it->second.qualified_flights.empty()) {
+    //         // 加入所有flights
+    //         for (const auto& flight : flights_) {
+    //             it->second.qualified_flights.insert(flight.second.id);
+    //         }
+    //     }
+    //     it++;
+    // }
     
-    std::cout << "删除了 " << removed_count << " 个无资质机组，剩余 " << crews_.size() << " 个机组。" << std::endl;
+    // std::cout << "删除了 " << removed_count << " 个无资质机组，剩余 " << crews_.size() << " 个机组。" << std::endl;
 }
 
 void SchedulingData::_load_excluded_tasks(const std::filesystem::path& file_path) {

@@ -50,8 +50,8 @@ void Solver::run() {
     int num_paths = 8;                // 探索路径数量
     int num_threads = available_threads; // 使用的线程数
     int max_iterations = 10000;        // 最大迭代次数
-    double initial_temperature = 1500.0; // 初始温度
-    double cooling_rate = 0.95;       // 冷却率
+    double initial_temperature = 1400; // 初始温度
+    double cooling_rate = 0.98;       // 冷却率
     double min_temperature = 0.01;    // 最小温度
     double initial_ruin_percentage = 0.05; // 初始破坏比例
     
