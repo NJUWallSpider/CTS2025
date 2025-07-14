@@ -59,7 +59,7 @@ SolutionState SolutionConstructor::generate_schedule() {
         if(data_.getDataVersion() == "0711"){
             //Factor 3: Base station strategic value (30% weight)
             if(max_base_flights > 0 && base_flight_counts.count(crew.base)) {
-                score += (base_flight_counts[crew.base] / max_base_flights) * 0.3;
+                score -= (base_flight_counts[crew.base] / max_base_flights) * 0.3;
             }
         }
         else{        // Factor 2: Qualification flexibility (40% weight)

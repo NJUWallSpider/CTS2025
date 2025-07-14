@@ -29,7 +29,7 @@ void CrewSchedule::construct_schedule_DFS() {
     // STEP 1. Generate and sort turnaround candidates
     std::vector<Turnaround> candidates;
     generate_turnaround_candidates(candidates);
-    add_bus_to_turnarounds(candidates);
+    //add_bus_to_turnarounds(candidates);
 
     std::sort(candidates.begin(), candidates.end(), [&](const Turnaround& a, const Turnaround& b) {
         
