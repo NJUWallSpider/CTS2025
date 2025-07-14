@@ -144,6 +144,81 @@
                 "-rf", "${workspaceFolder}/exact_solver/build/*"
             ],
             "detail": "清理构建目录"
+        },
+        {
+            "label": "CMake: Configure heuristic_new",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S",
+                "${workspaceFolder}/heuristic_new/src",
+                "-B",
+                "${workspaceFolder}/heuristic_new/build",
+                "-G",
+                "Unix Makefiles",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": "$gcc",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "detail": "为项目生成构建系统"
+        },
+        {
+            "label": "CMake: Build heuristic_new",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/heuristic_new/build",
+                "--parallel"
+            ],
+            "problemMatcher": "$gcc",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "编译项目",
+            "dependsOn": [
+                "CMake: Configure heuristic_new"
+            ]
+        },
+        {
+            "label": "Run heuristic_new",
+            "type": "shell",
+            "command": "${workspaceFolder}/heuristic_new/build/heuristic_new",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "dependsOn": [
+                "CMake: Build heuristic_new"
+            ],
+            "detail": "运行编译后的可执行文件"
+        },
+        {
+            "label": "Build & Run heuristic_new",
+            "type": "shell",
+            "command": "echo 'Running Build & Run'",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "CMake: Configure heuristic_new",
+                "CMake: Build heuristic_new",
+                "Run heuristic_new"
+            ],
+            "group": "test",
+            "detail": "完整的构建并运行流程"
+        },
+        {
+            "label": "Clean Build heuristic_new",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-rf",
+                "${workspaceFolder}/heuristic_new/build/*"
+            ],
+            "detail": "清理构建目录"
         }
     ]
 }

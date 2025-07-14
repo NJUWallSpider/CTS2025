@@ -150,7 +150,48 @@
                 "ignoreFailures": true
             }
         ]
+    },
+    {
+        "name": "(lldb) Launch heuristic_new",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/heuristic_new/build/heuristic_new",
+        "preLaunchTask": "CMake: Build heuristic_new",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "lldb",
+        "setupCommands": [
+            {
+                "description": "Enable LLDB logging for scripts",
+                "text": "log enable lldb",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Enable pretty-printing for lldb",
+                "text": "settings set target.print-object-description true",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Load custom TimePoint pretty printer",
+                "text": "command script import ${workspaceFolder}/.vscode/lldb_printers.py",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Add TimePoint pretty printer for std::chrono::time_point",
+                "text": "type summary add -x \"std::chrono::time_point<std::chrono::system_clock,.*>\" --python-function lldb_printers.TimePoint_SummaryProvider",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Add TimePoint pretty printer for typedef TimePoint",
+                "text": "type summary add -x \"^TimePoint$\" --python-function lldb_printers.TimePoint_SummaryProvider",
+                "ignoreFailures": true
+            }
+        ]
     }
+    
     
     ]
 }

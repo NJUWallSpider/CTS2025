@@ -1,0 +1,6 @@
+Total Duty Periods: 1643
+Total Non-Base Layover: 267
+Total Invalid Layover: 12
+Invalid Layover Set Size: 6
+Invalid Layover Set: VMTM JFWS MKHW DEPY WCAF NMPZ 
+Average Invalid Layover: 0.00730371
