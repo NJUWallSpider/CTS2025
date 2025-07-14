@@ -1,67 +1,67 @@
 [
 {
   "directory": "/Users/tangmoxin/比赛/new-cts/heuristic_new/build",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -g -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Calculator.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Calculator.cpp",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Calculator.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Calculator.cpp",
   "file": "/Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Calculator.cpp",
   "output": "CMakeFiles/heuristic_new.dir/Constructor/Calculator.cpp.o"
 },
 {
   "directory": "/Users/tangmoxin/比赛/new-cts/heuristic_new/build",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -g -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Action.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Action.cpp",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Action.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Action.cpp",
   "file": "/Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Action.cpp",
   "output": "CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Action.cpp.o"
 },
 {
   "directory": "/Users/tangmoxin/比赛/new-cts/heuristic_new/build",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -g -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Check.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Check.cpp",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Check.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Check.cpp",
   "file": "/Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Check.cpp",
   "output": "CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Check.cpp.o"
 },
 {
   "directory": "/Users/tangmoxin/比赛/new-cts/heuristic_new/build",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -g -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Scheduler/CrewSchedule.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/CrewSchedule.cpp",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Scheduler/CrewSchedule.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/CrewSchedule.cpp",
   "file": "/Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/CrewSchedule.cpp",
   "output": "CMakeFiles/heuristic_new.dir/Constructor/Scheduler/CrewSchedule.cpp.o"
 },
 {
   "directory": "/Users/tangmoxin/比赛/new-cts/heuristic_new/build",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -g -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Initializer.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Initializer.cpp",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Initializer.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Initializer.cpp",
   "file": "/Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Initializer.cpp",
   "output": "CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Initializer.cpp.o"
 },
 {
   "directory": "/Users/tangmoxin/比赛/new-cts/heuristic_new/build",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -g -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Update.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Update.cpp",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Update.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Update.cpp",
   "file": "/Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/Scheduler/Update.cpp",
   "output": "CMakeFiles/heuristic_new.dir/Constructor/Scheduler/Update.cpp.o"
 },
 {
   "directory": "/Users/tangmoxin/比赛/new-cts/heuristic_new/build",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -g -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/SolutionConstruct.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/SolutionConstruct.cpp",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Constructor/SolutionConstruct.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/SolutionConstruct.cpp",
   "file": "/Users/tangmoxin/比赛/new-cts/heuristic_new/src/Constructor/SolutionConstruct.cpp",
   "output": "CMakeFiles/heuristic_new.dir/Constructor/SolutionConstruct.cpp.o"
 },
 {
   "directory": "/Users/tangmoxin/比赛/new-cts/heuristic_new/build",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -g -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Loader/LoadData.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Loader/LoadData.cpp",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Loader/LoadData.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Loader/LoadData.cpp",
   "file": "/Users/tangmoxin/比赛/new-cts/heuristic_new/src/Loader/LoadData.cpp",
   "output": "CMakeFiles/heuristic_new.dir/Loader/LoadData.cpp.o"
 },
 {
   "directory": "/Users/tangmoxin/比赛/new-cts/heuristic_new/build",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -g -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Solver/ReportGenerator.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Solver/ReportGenerator.cpp",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Solver/ReportGenerator.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Solver/ReportGenerator.cpp",
   "file": "/Users/tangmoxin/比赛/new-cts/heuristic_new/src/Solver/ReportGenerator.cpp",
   "output": "CMakeFiles/heuristic_new.dir/Solver/ReportGenerator.cpp.o"
 },
 {
   "directory": "/Users/tangmoxin/比赛/new-cts/heuristic_new/build",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -g -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Solver/Solver.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Solver/Solver.cpp",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/Solver/Solver.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/Solver/Solver.cpp",
   "file": "/Users/tangmoxin/比赛/new-cts/heuristic_new/src/Solver/Solver.cpp",
   "output": "CMakeFiles/heuristic_new.dir/Solver/Solver.cpp.o"
 },
 {
   "directory": "/Users/tangmoxin/比赛/new-cts/heuristic_new/build",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -g -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/main.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/main.cpp",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++   -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -o CMakeFiles/heuristic_new.dir/main.cpp.o -c /Users/tangmoxin/比赛/new-cts/heuristic_new/src/main.cpp",
   "file": "/Users/tangmoxin/比赛/new-cts/heuristic_new/src/main.cpp",
   "output": "CMakeFiles/heuristic_new.dir/main.cpp.o"
 }

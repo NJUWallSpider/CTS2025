@@ -29,17 +29,21 @@ void CrewSchedule::construct_schedule_DFS() {
     // STEP 1. Generate and sort turnaround candidates
     std::vector<Turnaround> candidates;
     generate_turnaround_candidates(candidates);
+    add_bus_to_turnarounds(candidates);
 
     std::sort(candidates.begin(), candidates.end(), [&](const Turnaround& a, const Turnaround& b) {
+        
+        if(a.flights.size() != b.flights.size()){
+            return a.flights.size() > b.flights.size();
+        }
+        
         bool a_return_to_base = a.endAirport == crew_.base;
         bool b_return_to_base = b.endAirport == crew_.base;
         if(a_return_to_base != b_return_to_base){
             return a_return_to_base;
         }
 
-        if(a.flights.size() != b.flights.size()){
-            return a.flights.size() > b.flights.size();
-        }
+
 
         return a.startTime < b.startTime;
     });
@@ -93,12 +97,20 @@ void CrewSchedule::Action_TA(const Turnaround& turnaround){
             duty_periods_.back().tasks.emplace_back(*flight);
             flight_assignments[flight->id].emplace_back(crew_.id, true);
         }
+        // Only add positioning bus if it exists
+        if (turnaround.positioning_bus != nullptr) {
+            duty_periods_.back().tasks.emplace_back(*turnaround.positioning_bus);
+        }
     }
     else{
         DutyPeriod new_duty_period;
         for (const auto* flight : turnaround.flights) {
             new_duty_period.tasks.emplace_back(*flight);
             flight_assignments[flight->id].emplace_back(crew_.id, true);
+        }
+        // Only add positioning bus if it exists
+        if (turnaround.positioning_bus != nullptr) {
+            new_duty_period.tasks.emplace_back(*turnaround.positioning_bus);
         }
         duty_periods_.emplace_back(new_duty_period);
     }
@@ -114,7 +126,6 @@ void CrewSchedule::generate_turnaround_candidates(std::vector<Turnaround>& candi
         if (crew_.qualifications.find(flight.id) == crew_.qualifications.end()) {
             continue; // Skip flights crew is not qualified for
         }
-
         if (flight.depaAirport != current_airport_) {
             continue;
         }
@@ -160,7 +171,44 @@ void CrewSchedule::generate_turnaround_candidates(std::vector<Turnaround>& candi
         candidates.push_back(current_turnaround);
     }
 }
+void CrewSchedule::add_bus_to_turnarounds(std::vector<Turnaround>& candidates){
+    
+    for (auto& turnaround : candidates) {
+        // If turnaround already returns to base, keep it as is
+        if (turnaround.endAirport == crew_.base) {
+            continue;
+        } else {
+            // Try to find a bus that can take crew back to base
+            bool found_valid_bus = false;
+            
+            for (const auto& bus : data_.getBuses()) {
+                // Check if bus goes from turnaround end to crew base
+                if (bus.depaAirport == turnaround.endAirport && 
+                    bus.arriAirport == crew_.base &&
+                    bus.td >= turnaround.endTime &&
+                    bus.td < turnaround.endTime + MIN_REST_BEFORE_FDUTY) {
+                    
+                    // Basic timing check - ensure bus departure is reasonable after turnaround end
+                    auto connection_time = bus.td - turnaround.endTime;
+                    if (connection_time >= MIN_CONNECTION_TIME_BUS) {
+                        // Create a new turnaround with the positioning bus
+           
+                        turnaround.positioning_bus = &bus;
+                        turnaround.endTime = bus.ta;
+                        turnaround.endAirport = bus.arriAirport; // This should now be crew_.base
+                        
+                        found_valid_bus = true;
+                        break; // Take the first valid bus found
+                    }
+                }
+            }
+            
 
+        }
+    }
+    
+
+}
     
    // --- Getter Helper Functions ---
 TimePoint get_start_time(const std::variant<Flight, Bus, GroundDuty>& task) {

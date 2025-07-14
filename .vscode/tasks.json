@@ -156,7 +156,7 @@
                 "${workspaceFolder}/heuristic_new/build",
                 "-G",
                 "Unix Makefiles",
-                "-DCMAKE_BUILD_TYPE=Debug"
+                "-DCMAKE_BUILD_TYPE=Release"
             ],
             "problemMatcher": "$gcc",
             "group": {

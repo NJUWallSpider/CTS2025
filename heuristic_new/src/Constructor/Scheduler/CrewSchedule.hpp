@@ -98,6 +98,7 @@ public:
 
 private:
     void generate_turnaround_candidates(std::vector<Turnaround>& candidates);
+    void add_bus_to_turnarounds(std::vector<Turnaround>& candidates);
     const DataLoader& data_; 
     const Crew& crew_;
     std::vector<DutyPeriod>& duty_periods_; // List of duty periods for rule checking
