@@ -31,15 +31,17 @@ void CrewSchedule::construct_schedule_DFS() {
     filter_turnaround_candidates(candidates);
 
     std::sort(candidates.begin(), candidates.end(), [&](const Turnaround& a, const Turnaround& b) {
+        if(a.flights.size() != b.flights.size()){
+            return a.flights.size() > b.flights.size();
+        }
+        
         bool a_return_to_base = a.endAirport == crew_.base;
         bool b_return_to_base = b.endAirport == crew_.base;
         if(a_return_to_base != b_return_to_base){
             return a_return_to_base;
         }
 
-        if(a.flights.size() != b.flights.size()){
-            return a.flights.size() > b.flights.size();
-        }
+        
 
         return a.startTime < b.startTime;
     });
