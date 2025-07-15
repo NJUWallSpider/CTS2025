@@ -27,12 +27,12 @@ int main(int argc, char** argv) {
         std::filesystem::path data_path = std::filesystem::path("data") / data_version; 
         std::string fdp_path = "exact_solver/fdp_networks/" + data_version; // 储存FDP网络的文件夹路径
         std::filesystem::path heuristic_path = std::filesystem::path("heuristic") / "report" / data_version / "rosterResult.csv"; // 储存启发式解的文件夹路径
-        // std::filesystem::path heuristic_path = std::filesystem::path("/home/ubuntu/new-cts/empty_submission.csv");
+        // std::filesystem::path heuristic_path = std::filesystem::path("/home/dbxp/new-cts/result_0623.csv");
         Date start_date{std::chrono::year(2025)/std::chrono::April/std::chrono::day(29)};
         Date end_date{std::chrono::year(2025)/std::chrono::May/std::chrono::day(7)};
         
         // 设置非基地机场结束的FDP被拒绝的概率
-        double non_base_rejection_prob = 0.5; 
+        double non_base_rejection_prob = 0; 
         
         // 设置任务数量阈值，超过此阈值将随机删除bus
         size_t max_tasks_threshold = 10000;
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
         // 设置Beam搜索的宽度
         int beam_width = 50;
 
-        const int MAX_ITERATIONS = 90; // 设置最大迭代次数
+        const int MAX_ITERATIONS = 100; // 设置最大迭代次数
 
         const int NUM_THREADS = 8;  // 设置线程数
 
