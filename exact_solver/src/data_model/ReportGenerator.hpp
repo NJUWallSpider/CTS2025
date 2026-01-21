@@ -1,7 +1,7 @@
 // ReportGenerator.hpp
 #pragma once
 
-#include "SchedulingData.hpp" // 包含核心数据结构
+#include "SchedulingData.hpp" // Include core data structures
 #include <string>
 #include <set>
 #include <map>
@@ -14,17 +14,17 @@ std::string format_time(const time_point& tp);
 namespace ReportGenerator {
 /**
  * @brief 
- * @param solution 求解器输出的最终方案。
- * @param filename 要保存的报告文件名。
- * @param uncovered_flights 未覆盖航班集合。
+ * @param solution Final solution from solver.
+ * @param filename Report filename to save.
+ * @param uncovered_flights Set of uncovered flights.
  */
 void generate_readable_report(const Solution& solution, const std::string& filename, 
                             const std::set<std::string>& uncovered_flights = {});
 
 /**
- * @brief 根据求解器生成的方案，创建一个标准格式的CSV提交文件。
- * @param solution 求解器输出的最终方案。
- * @param filename 要保存的CSV文件名。
+ * @brief Creates a standard format CSV submission file based on the solver's solution.
+ * @param solution Final solution from solver.
+ * @param filename CSV filename to save.
  */
 void generate_submission_file(const Solution& solution, const std::string& filename);
 

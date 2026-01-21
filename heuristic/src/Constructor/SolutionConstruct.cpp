@@ -130,9 +130,9 @@ SolutionState SolutionConstructor::generate_schedule() {
     }
 
     // std::vector<Crew> unassigned_crews;
-    // // 收集所有未分配任务的机长ID
+    // // Collect all crew IDs with no assigned tasks
     // for (const auto& [crew_id, duty_periods] : solution.crew_dutyperiods) {
-    //     // 只选择有任务的机长
+    //     // Only select crews with tasks
     //     if (duty_periods.back().tasks.empty()) {
     //         unassigned_crews.push_back(data_.getCrews().at(crew_id));
     //     }
@@ -165,28 +165,28 @@ SolutionState SolutionConstructor::generate_schedule() {
     return solution;
 }
 
-// 破坏与重建优化
+// Ruin and Recreate Optimization
 SolutionState SolutionConstructor::ruin_and_recreate(SolutionState& initial_solution, double ruin_percentage) {
-    // 创建一个解决方案的副本
+    // Create a copy of the solution
     SolutionState current_solution = initial_solution;
     
-    // 选择要破坏的机长
+    // Select crews to ruin
     std::vector<std::string> crews_to_ruin = select_crews_to_ruin(current_solution, ruin_percentage);
     
-    // 如果没有选择到机长，直接返回原始解决方案
+    // If no crews were selected, return the original solution
     if (crews_to_ruin.empty()) {
         return current_solution;
     }
     
-   // std::cout << "选择了 " << crews_to_ruin.size() << " 名机长进行破坏与重建优化" << std::endl;
+   // std::cout << "Selected " << crews_to_ruin.size() << " crews for ruin and recreate optimization" << std::endl;
     
-    // 执行破坏操作
+    // Execute ruin operation
     ruin_solution(current_solution, crews_to_ruin);
     
-    // 执行重建操作
+    // Execute recreate operation
     recreate_solution(current_solution, crews_to_ruin);
     
-    // 重新计算解决方案的分数
+    // Recalculate solution score
     current_solution.score = 0.0;
     for(const auto& flight : current_solution.flight_assignments){
         for(const auto& task : flight.second){
@@ -200,20 +200,20 @@ SolutionState SolutionConstructor::ruin_and_recreate(SolutionState& initial_solu
     return current_solution;
 }
 
-// 选择要破坏的机长
+// Select crews to ruin
 std::vector<std::string> SolutionConstructor::select_crews_to_ruin(const SolutionState& solution, double percentage) {
     std::vector<std::string> all_crew_ids;
     std::vector<std::string> selected_crews;
     
-    // // 收集所有已分配任务的机长ID
+    // // Collect all crew IDs with assigned tasks
     // for (const auto& [crew_id, duty_periods] : solution.crew_dutyperiods) {
-    //     // 只选择有任务的机长
+    //     // Only select crews with tasks
     //     if (!duty_periods.empty()) {
     //         all_crew_ids.push_back(crew_id);
     //     }
     // }
     
-    // // 如果没有机长有任务，返回空列表
+    // // If no crews have tasks, return empty list
     // if (all_crew_ids.empty()) {
     //     return selected_crews;
     // }
@@ -224,98 +224,98 @@ std::vector<std::string> SolutionConstructor::select_crews_to_ruin(const Solutio
         }
     }
     
-    // 计算要选择的机长数量
+    // Calculate the number of crews to select
     int num_crews_to_select = std::max(1, static_cast<int>(all_crew_ids.size() * percentage));
     
-    // 随机选择指定数量的机长
+    // Randomly select the specified number of crews
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, all_crew_ids.size() - 1);
     
-    // 使用set来避免重复选择
+    // Use set to avoid duplicate selection
     std::set<std::string> selected_set;
     while (selected_set.size() < num_crews_to_select) {
         int random_index = dis(gen);
         selected_set.insert(all_crew_ids[random_index]);
     }
     
-    // 将set转换为vector
+    // Convert set to vector
     selected_crews.assign(selected_set.begin(), selected_set.end());
 
     return selected_crews;
 }
 
-// 破坏阶段：移除部分机长的排班
+// Ruin phase: remove schedules for some crews
 void SolutionConstructor::ruin_solution(SolutionState& solution, const std::vector<std::string>& selected_crews) {
-    // 对于每个选中的机长
+    // For each selected crew
     for (const auto& crew_id : selected_crews) {
-        // 获取该机长的所有任务
+        // Get all tasks for this crew
         if (solution.crew_dutyperiods.find(crew_id) != solution.crew_dutyperiods.end()) {
             const auto& duty_periods = solution.crew_dutyperiods[crew_id];
             
-            // 遍历所有任务周期
+            // Traverse all duty periods
             for (const auto& duty_period : duty_periods) {
-                // 遍历任务周期中的所有任务
+                // Traverse all tasks in the duty period
                 for (const auto& task : duty_period.tasks) {
-                    // 如果是航班任务，则从航班分配中移除
+                    // If it is a flight task, remove from flight assignments
                     if (std::holds_alternative<Flight>(task)) {
                         const auto& flight = std::get<Flight>(task);
                         solution.flight_assignments.erase(flight.id);
                     }
-                    // 注意：地面任务和巴士任务保持不变，因为它们是固定的
+                    // Note: Ground duties and bus tasks remain unchanged as they are fixed
                 }
             }
             
-            // 清空该机长的任务周期
+            // Clear duty periods for this crew
             solution.crew_dutyperiods.erase(crew_id);
             
-            // 清空该机长的周期
+            // Clear cycles for this crew
             if (solution.crew_cycles.find(crew_id) != solution.crew_cycles.end()) {
                 solution.crew_cycles.erase(crew_id);
             }
         }
     }
     
-    // std::cout << "完成破坏阶段，已移除选中机长的排班" << std::endl;
+    // std::cout << "Completed ruin phase, removed schedules for selected crews" << std::endl;
 }
 
-// 重建阶段：为被选中的机长重新安排航班
+// Recreate phase: reschedule flights for the selected crews
 void SolutionConstructor::recreate_solution(SolutionState& solution, const std::vector<std::string>& selected_crews) {
     const auto& crews = data_.getCrews();
     
 
-    // 对于每个选中的机长
+    // For each selected crew
     for (const auto& crew_id : selected_crews) {
-        // 确保机长存在于数据中
+        // Ensure crew exists in data
         if (crews.find(crew_id) != crews.end()) {
             const auto& crew = crews.at(crew_id);
             
-            // 创建机长调度构建器
+            // Create crew schedule builder
             CrewSchedule crew_schedule_builder(data_, crew, 
                 solution.crew_dutyperiods[crew_id], 
                 solution.flight_assignments,
                 solution.crew_cycles[crew_id]);
             
-            // 为该机长构建新的调度
+            // Construct new schedule for this crew
             crew_schedule_builder.construct_schedule_DFS();
         }
     }
     
-    // std::cout << "完成重建阶段，已为选中机长重新安排排班" << std::endl;
+    // std::cout << "Completed recreate phase, rescheduled flights for selected crews" << std::endl;
 }
 
-// 计算接受新解的概率（模拟退火）
+// Calculate acceptance probability for new solution (Simulated Annealing)
 double SolutionConstructor::calculate_acceptance_probability(double delta_energy, double temperature) {
     if (delta_energy <= 0) {
-        // 如果新解更好，总是接受
+        // If new solution is better, always accept
         return 1.0;
     } else {
-        // 如果新解更差，根据差距和温度计算接受概率
+        // If new solution is worse, calculate probability based on difference and temperature
         return std::exp(-delta_energy / temperature);
     }
 }
 
-// 多线程工作函数：处理一组路径
+// Worker function for multi-threading: process a group of paths
 void SolutionConstructor::thread_worker(
     std::vector<SolutionState>& paths,
     std::vector<double>& temperatures,
@@ -331,42 +331,42 @@ void SolutionConstructor::thread_worker(
     SolutionState& global_best_solution,
     std::atomic<int>& global_iteration_counter
 ) {
-    // 为每个线程创建独立的随机数生成器
+    // Create independent random number generator for each thread
     std::random_device rd;
     std::mt19937 local_rng(rd());
     std::vector<std::uniform_real_distribution<double>> random_distributions;
     
-    // 为每条路径创建独立的随机分布
+    // Create independent random distribution for each path
     for (int i = start_idx; i < end_idx; ++i) {
         random_distributions.emplace_back(0.0, 1.0);
     }
     
-    // 开始迭代优化
+    // Start iterative optimization
     for (int iter = 0; iter < max_iterations && !should_terminate; iter++) {
-        // 对每条分配给该线程的路径进行一次迭代
+        // Perform one iteration for each path assigned to this thread
         for (int path_offset = 0; path_offset < (end_idx - start_idx); path_offset++) {
             int path_idx = start_idx + path_offset;
             
-            // 当前路径的当前解
+            // Current solution of the current path
             SolutionState& current_solution = paths[path_idx];
             
-            // 当前路径的温度和破坏比例
+            // Current temperature and ruin percentage of the current path
             double& temperature = temperatures[path_idx];
             double& ruin_percentage = ruin_percentages[path_idx];
             
-            // 生成新解
+            // Generate new solution
             std::vector<std::string> crews_to_ruin = select_crews_to_ruin(current_solution, ruin_percentage);
             if (!crews_to_ruin.empty()) {
-                // 创建当前解的副本
+                // Create a copy of the current solution
                 SolutionState candidate_solution = current_solution;
                 
-                // 执行破坏操作
+                // Execute ruin operation
                 ruin_solution(candidate_solution, crews_to_ruin);
                 
-                // 执行重建操作
+                // Execute recreate operation
                 recreate_solution(candidate_solution, crews_to_ruin);
                 
-                // 重新计算解的分数
+                // Recalculate solution score
                 candidate_solution.score = 0.0;
                 for (const auto& flight : candidate_solution.flight_assignments) {
                     for (const auto& task : flight.second) {
@@ -377,35 +377,35 @@ void SolutionConstructor::thread_worker(
                     }
                 }
                 
-                // 计算能量差（分数差）
+                // Calculate energy difference (score difference)
                 double delta_energy = current_solution.score - candidate_solution.score;
                 
-                // 决定是否接受新解
+                // Decide whether to accept the new solution
                 bool accept_new_solution = false;
                 if (delta_energy <= 0) {
-                    // 如果新解更好，总是接受
+                    // If new solution is better, always accept
                     accept_new_solution = true;
                 } else {
-                    // 如果新解更差，根据模拟退火准则决定是否接受
+                    // If new solution is worse, decide based on simulated annealing criteria
                     double acceptance_probability = calculate_acceptance_probability(delta_energy, temperature);
                     double random_value = random_distributions[path_offset](local_rng);
                     accept_new_solution = (random_value < acceptance_probability);
                 }
                 
-                // 更新当前解
+                // Update current solution
                 if (accept_new_solution) {
                     current_solution = candidate_solution;
                     
-                    // 如果新解比全局最优解更好，更新全局最优解
+                    // If new solution is better than global best, update global best
                     {
-                        // 使用互斥锁保护全局最优解的访问
+                        // Use mutex to protect access to global best solution
                         std::lock_guard<std::mutex> lock(global_best_mutex);
                         if (current_solution.score > global_best_solution.score) {
                             global_best_solution = current_solution;
-                            std::cout << "线程 " << std::this_thread::get_id() << " 路径 " << path_idx + 1 
-                                      << " 找到新的全局最优解，分数: " << global_best_solution.score 
-                                      << ", 迭代: " << global_iteration_counter.load() 
-                                      << ", 温度: " << temperature << std::endl;
+                            std::cout << "Thread " << std::this_thread::get_id() << " Path " << path_idx + 1 
+                                      << " Found new global best solution, Score: " << global_best_solution.score 
+                                      << ", Iteration: " << global_iteration_counter.load() 
+                                      << ", Temperature: " << temperature << std::endl;
                                 ReportGenerator::generate_schedule_report(global_best_solution, data_, "heuristic/report/" + data_version_ + "/schedule_report.txt", std::chrono::steady_clock::now());
                                 ReportGenerator::generate_submission_csv(global_best_solution, "heuristic/report/" + data_version_ + "/rosterResult.csv");
                                 ReportGenerator::validate_crew_flight_consistency(global_best_solution, "heuristic/report/" + data_version_ + "/crew_flight_consistency.txt");
@@ -415,35 +415,35 @@ void SolutionConstructor::thread_worker(
                 }
             }
             
-            // 降低温度
+            // Decrease temperature
             temperature = std::max(min_temperature, temperature * cooling_rate);
             
-            // 动态调整破坏比例
+            // Dynamically adjust ruin percentage
             if (iter % 50 == 0) {
-                // 每50次迭代调整一次破坏比例
+                // Adjust ruin percentage every 50 iterations
                 if (temperature > initial_temperature * 0.5) {
-                    // 温度较高时，增加破坏比例以促进探索
+                    // When temperature is high, increase ruin percentage to promote exploration
                     ruin_percentage = std::min(0.3, ruin_percentage * 1.1);
                 } else {
-                    // 温度较低时，减小破坏比例以促进局部搜索
+                    // When temperature is low, decrease ruin percentage to promote local search
                     ruin_percentage = std::max(0.02, ruin_percentage * 0.9);
                 }
             }
         }
         
-        // 增加全局迭代计数器
+        // Increment global iteration counter
         int current_iteration = ++global_iteration_counter;
         
-        // 每100次全局迭代输出一次进度
-        if (current_iteration % 100 == 0 && start_idx == 0) {  // 只让第一个线程输出进度
+        // Output progress every 100 global iterations
+        if (current_iteration % 100 == 0 && start_idx == 0) {  // Only let the first thread output progress
             std::lock_guard<std::mutex> lock(global_best_mutex);
-            std::cout << "完成迭代: " << current_iteration << "/" << (max_iterations * paths.size()) 
-                      << ", 当前全局最优分数: " << global_best_solution.score << std::endl;
+            std::cout << "Completed Iteration: " << current_iteration << "/" << (max_iterations * paths.size()) 
+                      << ", Current Global Best Score: " << global_best_solution.score << std::endl;
         }
     }
 }
 
-// 多线程版本的模拟退火多路径破坏与重建优化
+// Multi-threaded version of Simulated Annealing Multi-path Ruin and Recreate Optimization
 SolutionState SolutionConstructor::parallel_simulated_annealing_ruin_recreate(
     SolutionState& initial_solution, 
     int num_paths,
@@ -454,49 +454,49 @@ SolutionState SolutionConstructor::parallel_simulated_annealing_ruin_recreate(
     double min_temperature,
     double initial_ruin_percentage
 ) {
-    // 确定使用的线程数
+    // Determine number of threads to use
     if (num_threads <= 0) {
         num_threads = std::thread::hardware_concurrency();
-        // 如果无法确定硬件支持的线程数，默认使用4个线程
+        // If hardware supported threads cannot be determined, default to 4
         if (num_threads == 0) {
             num_threads = 4;
         }
     }
     
-    std::cout << "使用 " << num_threads << " 个线程进行并行模拟退火多路径优化" << std::endl;
-    std::cout << "创建 " << num_paths << " 条探索路径" << std::endl;
+    std::cout << "Using " << num_threads << " threads for parallel simulated annealing multi-path optimization" << std::endl;
+    std::cout << "Creating " << num_paths << " exploration paths" << std::endl;
     
-    // 创建多条探索路径，每条路径都从初始解出发
+    // Create multiple exploration paths, each starting from the initial solution
     std::vector<SolutionState> paths(num_paths, initial_solution);
     std::vector<double> temperatures(num_paths, initial_temperature);
     std::vector<double> ruin_percentages(num_paths, initial_ruin_percentage);
     
-    // 记录全局最优解
+    // Record global best solution
     SolutionState global_best_solution = initial_solution;
     
-    // 创建互斥锁，用于保护全局最优解的访问
+    // Create mutex to protect access to global best solution
     std::mutex global_best_mutex;
     
-    // 创建原子布尔变量，用于通知所有线程终止
+    // Create atomic boolean to notify all threads to terminate
     std::atomic<bool> should_terminate(false);
     
-    // 创建原子整数，用于跟踪全局迭代次数
+    // Create atomic integer to track global iteration count
     std::atomic<int> global_iteration_counter(0);
     
-    // 创建线程池
+    // Create thread pool
     std::vector<std::thread> threads;
     
-    // 计算每个线程处理的路径数
+    // Calculate number of paths processed by each thread
     int paths_per_thread = num_paths / num_threads;
     int remaining_paths = num_paths % num_threads;
     
-    // 启动线程
+    // Start threads
     int start_idx = 0;
     for (int t = 0; t < num_threads; ++t) {
-        // 计算该线程处理的路径范围
+        // Calculate path range for this thread
         int end_idx = start_idx + paths_per_thread + (t < remaining_paths ? 1 : 0);
         
-        // 创建并启动线程
+        // Create and start thread
         threads.emplace_back(
             &SolutionConstructor::thread_worker,
             this,
@@ -518,12 +518,12 @@ SolutionState SolutionConstructor::parallel_simulated_annealing_ruin_recreate(
         start_idx = end_idx;
     }
     
-    // 等待所有线程完成
+    // Wait for all threads to complete
     for (auto& thread : threads) {
         thread.join();
     }
     
-    // 最终路径交叉：找出最佳路径
+    // Final path crossover: Find the best path
     double best_path_score = paths[0].score;
     int best_path_idx = 0;
     
@@ -534,18 +534,18 @@ SolutionState SolutionConstructor::parallel_simulated_annealing_ruin_recreate(
         }
     }
     
-    // 如果最佳路径比全局记录的最优解更好，更新全局最优解
+    // If the best path is better than the global best solution, update global best
     if (best_path_score > global_best_solution.score) {
         global_best_solution = paths[best_path_idx];
     }
     
-    std::cout << "并行模拟退火多路径优化完成" << std::endl;
-    std::cout << "全局最优解分数: " << global_best_solution.score << std::endl;
+    std::cout << "Parallel simulated annealing multi-path optimization completed" << std::endl;
+    std::cout << "Global Best Solution Score: " << global_best_solution.score << std::endl;
     
     return global_best_solution;
 }
 
-// 使用模拟退火的多路径破坏与重建优化（单线程版本）
+// Simulated Annealing Multi-path Ruin and Recreate Optimization (Single-threaded version)
 SolutionState SolutionConstructor::simulated_annealing_ruin_recreate(
     SolutionState& initial_solution, 
     int num_paths,
@@ -555,41 +555,41 @@ SolutionState SolutionConstructor::simulated_annealing_ruin_recreate(
     double min_temperature,
     double initial_ruin_percentage
 ) {
-    // 创建多条探索路径，每条路径都从初始解出发
+    // Create multiple exploration paths, each starting from the initial solution
     std::vector<SolutionState> paths(num_paths, initial_solution);
     std::vector<double> temperatures(num_paths, initial_temperature);
     std::vector<double> ruin_percentages(num_paths, initial_ruin_percentage);
     
-    // 记录全局最优解
+    // Record global best solution
     SolutionState global_best_solution = initial_solution;
     
-    // 为每条路径创建独立的随机数生成器
+    // Create independent random number generator for each path
     std::vector<std::uniform_real_distribution<double>> random_distributions(num_paths, std::uniform_real_distribution<double>(0.0, 1.0));
     
-    // 开始迭代优化
+    // Start iterative optimization
     for (int iter = 0; iter < max_iterations; iter++) {
-        // 对每条路径进行一次迭代
+        // Perform one iteration for each path
         for (int path_idx = 0; path_idx < num_paths; path_idx++) {
-            // 当前路径的当前解
+            // Current solution of the current path
             SolutionState& current_solution = paths[path_idx];
             
-            // 当前路径的温度和破坏比例
+            // Current temperature and ruin percentage of the current path
             double& temperature = temperatures[path_idx];
             double& ruin_percentage = ruin_percentages[path_idx];
             
-            // 生成新解
+            // Generate new solution
             std::vector<std::string> crews_to_ruin = select_crews_to_ruin(current_solution, ruin_percentage);
             if (!crews_to_ruin.empty()) {
-                // 创建当前解的副本
+                // Create a copy of the current solution
                 SolutionState candidate_solution = current_solution;
                 
-                // 执行破坏操作
+                // Execute ruin operation
                 ruin_solution(candidate_solution, crews_to_ruin);
                 
-                // 执行重建操作
+                // Execute recreate operation
                 recreate_solution(candidate_solution, crews_to_ruin);
                 
-                // 重新计算解的分数
+                // Recalculate solution score
                 candidate_solution.score = 0.0;
                 for (const auto& flight : candidate_solution.flight_assignments) {
                     for (const auto& task : flight.second) {
@@ -600,60 +600,60 @@ SolutionState SolutionConstructor::simulated_annealing_ruin_recreate(
                     }
                 }
                 
-                // 计算能量差（分数差）
+                // Calculate energy difference (score difference)
                 double delta_energy = current_solution.score - candidate_solution.score;
                 
-                // 决定是否接受新解
+                // Decide whether to accept the new solution
                 bool accept_new_solution = false;
                 if (delta_energy <= 0) {
-                    // 如果新解更好，总是接受
+                    // If new solution is better, always accept
                     accept_new_solution = true;
                 } else {
-                    // 如果新解更差，根据模拟退火准则决定是否接受
+                    // If new solution is worse, decide based on simulated annealing criteria
                     double acceptance_probability = calculate_acceptance_probability(delta_energy, temperature);
                     double random_value = random_distributions[path_idx](rng_);
                     accept_new_solution = (random_value < acceptance_probability);
                 }
                 
-                // 更新当前解
+                // Update current solution
                 if (accept_new_solution) {
                     current_solution = candidate_solution;
                     
-                    // 如果新解比全局最优解更好，更新全局最优解
+                    // If new solution is better than global best, update global best
                     if (current_solution.score > global_best_solution.score) {
                         global_best_solution = current_solution;
-                        std::cout << "路径 " << path_idx + 1 << " 找到新的全局最优解，分数: " 
-                                  << global_best_solution.score << ", 迭代: " << iter + 1 
-                                  << ", 温度: " << temperature << std::endl;
+                        std::cout << "Path " << path_idx + 1 << " Found new global best solution, Score: " 
+                                  << global_best_solution.score << ", Iteration: " << iter + 1 
+                                  << ", Temperature: " << temperature << std::endl;
                     }
                 }
             }
             
-            // 降低温度
+            // Decrease temperature
             temperature = std::max(min_temperature, temperature * cooling_rate);
             
-            // 动态调整破坏比例
+            // Dynamically adjust ruin percentage
             if (iter % 50 == 0) {
-                // 每50次迭代调整一次破坏比例
+                // Adjust ruin percentage every 50 iterations
                 if (temperature > initial_temperature * 0.5) {
-                    // 温度较高时，增加破坏比例以促进探索
+                    // When temperature is high, increase ruin percentage to promote exploration
                     ruin_percentage = std::min(0.3, ruin_percentage * 1.1);
                 } else {
-                    // 温度较低时，减小破坏比例以促进局部搜索
+                    // When temperature is low, decrease ruin percentage to promote local search
                     ruin_percentage = std::max(0.02, ruin_percentage * 0.9);
                 }
             }
         }
         
-        // 每100次迭代输出一次进度
+        // Output progress every 100 iterations
         if ((iter + 1) % 100 == 0) {
-            std::cout << "完成迭代: " << iter + 1 << "/" << max_iterations 
-                      << ", 当前全局最优分数: " << global_best_solution.score << std::endl;
+            std::cout << "Completed Iteration: " << iter + 1 << "/" << max_iterations 
+                      << ", Current Global Best Score: " << global_best_solution.score << std::endl;
         }
         
-        // 每200次迭代进行路径交叉（将全局最优解注入到表现最差的路径）
+        // Perform path crossover every 200 iterations (inject global best into worst path)
         if ((iter + 1) % 200 == 0 && iter > 0) {
-            // 找出表现最差的路径
+            // Find the worst performing path
             int worst_path_idx = 0;
             double worst_score = paths[0].score;
             
@@ -664,13 +664,13 @@ SolutionState SolutionConstructor::simulated_annealing_ruin_recreate(
                 }
             }
             
-            // 将全局最优解注入到表现最差的路径
+            // Inject global best solution into the worst performing path
             paths[worst_path_idx] = global_best_solution;
-            // 重置该路径的温度和破坏比例，以便它可以进行更多的探索
+            // Reset temperature and ruin percentage for this path to allow more exploration
             temperatures[worst_path_idx] = initial_temperature * 0.5;
             ruin_percentages[worst_path_idx] = initial_ruin_percentage;
             
-            std::cout << "路径交叉: 将全局最优解注入到路径 " << worst_path_idx + 1 << std::endl;
+            std::cout << "Path Crossover: Injecting global best solution into path " << worst_path_idx + 1 << std::endl;
         }
     }
     

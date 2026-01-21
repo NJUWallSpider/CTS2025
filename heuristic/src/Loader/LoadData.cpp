@@ -1,12 +1,12 @@
 // src/SchedulingData.cpp
 
 #include "LoadData.hpp"
-#include "csv.h" // 引入 csv.h 库
+#include "csv.h" // Include csv.h library
 #include <iostream>
 #include <algorithm> // for std::sort
 #include <iomanip>   // for std::get_time
 
-// 将 "YYYY/M/D H:M" 格式的字符串转换为时间点
+// Convert "YYYY/M/D H:M" format string to time point
 TimePoint DataLoader::string_to_time_point(const std::string& time_str) {
     std::tm tm = {};
     std::stringstream ss(time_str);
@@ -14,9 +14,9 @@ TimePoint DataLoader::string_to_time_point(const std::string& time_str) {
     return std::chrono::system_clock::from_time_t(std::mktime(&tm)) + std::chrono::hours(8);
 }
 
-// 构造函数，调度所有加载操作
+// Constructor, schedule all loading operations
 DataLoader::DataLoader(const std::filesystem::path& data_path, const std::string& data_version) {
-    std::cout << "开始加载数据..." << std::endl;
+    std::cout << "Starting data loading..." << std::endl;
 
     _load_crews(data_path / "crew.csv");
     _load_flights(data_path / "flight.csv");
@@ -29,8 +29,8 @@ DataLoader::DataLoader(const std::filesystem::path& data_path, const std::string
     //_link_flights_to_aircrafts();
 
 
-    std::cout << "数据加载完毕。共加载 " << crews_.size() << " 名机组成员, "
-              << flights_.size() << " 个航班, " << buses_.size() << " 个巴士。" << std::endl;
+    std::cout << "Data loading complete. Loaded " << crews_.size() << " crew members, "
+              << flights_.size() << " flights, " << buses_.size() << " buses." << std::endl;
 }
 
 void DataLoader::_load_crews(const std::filesystem::path& file_path) {
@@ -69,7 +69,7 @@ void DataLoader::_load_flights(const std::filesystem::path& flight_path) {
 }
 
 void DataLoader::_load_buses(const std::filesystem::path& bus_path) {
-        // 加载巴士
+        // Load buses
     io::CSVReader<5> bus_in(bus_path.string());
     bus_in.read_header(io::ignore_extra_column, "id", "depaAirport", "arriAirport", "td", "ta");
     std::string id, depa, arri, td_str, ta_str;
@@ -86,7 +86,7 @@ void DataLoader::_load_buses(const std::filesystem::path& bus_path) {
     });
 }
 
-// 加载过夜机场
+// Load layover airports
 void DataLoader::_load_layover_stations(const std::filesystem::path& file_path) {
     io::CSVReader<1> in(file_path.string());
     in.read_header(io::ignore_extra_column, "airport");
@@ -96,7 +96,7 @@ void DataLoader::_load_layover_stations(const std::filesystem::path& file_path) 
     }
 }
 
-// 将地面任务与机组成员关联
+// Link ground tasks with crew members
 void DataLoader::_load_and_link_ground_duties(const std::filesystem::path& file_path) {
     io::CSVReader<6> in(file_path.string());
     in.read_header(io::ignore_extra_column, "id", "crewId", "airport", "startTime", "endTime", "isDuty");
@@ -127,7 +127,7 @@ void DataLoader::_load_and_link_ground_duties(const std::filesystem::path& file_
 }
 
 
-// 将机组成员的资格与任务关联
+// Link crew qualifications with tasks
 void DataLoader::_link_crew_qualifications(const std::filesystem::path& file_path) {
     io::CSVReader<2> in(file_path.string());
     in.read_header(io::ignore_extra_column, "crewId", "legId");
@@ -136,7 +136,7 @@ void DataLoader::_link_crew_qualifications(const std::filesystem::path& file_pat
     std::string crewId, legId;
     while(in.read_row(crewId, legId)) {
         if(file_path.string() == "data/0606/crewLegMatch.csv") {
-            crewId = crewId.substr(1, crewId.size() - 2); // 去掉引号
+            crewId = crewId.substr(1, crewId.size() - 2); // Remove quotes
             legId = legId.substr(1, legId.size() - 2); 
         }
 

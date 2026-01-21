@@ -1,24 +1,24 @@
 // SchedulingData.cpp
 #include "SchedulingData.hpp"
 #include "ReportGenerator.hpp"
-#include "csv.h" // 引入CSV解析库
-#include <iomanip> // 用于日期解析
-#include <sstream> // 用于日期解析
+#include "csv.h" // Include CSV parser library
+#include <iomanip> // For date parsing
+#include <sstream> // For date parsing
 #include <chrono>
 #include <sstream>
-#include <stdexcept> // 用于抛出异常
+#include <stdexcept> // For throwing exceptions
 #include <iomanip>
 #include <sstream>
-#include <random> // 用于随机删除bus
-#include <algorithm> // 用于随机删除bus
+#include <random> // For randomly deleting buses
+#include <algorithm> // For randomly deleting buses
 
-// --- 时间转换辅助函数 ---
-// 将 "YYYY-MM-DD HH:MM:SS" 格式的字符串转换为 time_point
+// --- Time conversion helper function ---
+// Convert "YYYY-MM-DD HH:MM:SS" format string to time_point
 time_point string_to_time_point(const std::string& time_str) {
     std::tm tm = {};
     std::istringstream ss(time_str);
     
-    // 尝试解析字符串
+    // Attempt to parse string
     ss >> std::get_time(&tm, "%Y/%m/%d %H:%M");
     
     if (ss.fail()) {
@@ -28,21 +28,21 @@ time_point string_to_time_point(const std::string& time_str) {
         // }
     }
     
-    // 转换为 time_t（UTC 时间）
+    // Convert to time_t (UTC time)
     std::time_t tt = std::mktime(&tm);
     
     if (tt == -1) {
         throw std::runtime_error("Invalid datetime value");
     }
     
-    // 转换为 UTC 时间点（需要减去时区偏移）
+    // Convert to UTC time point (need to subtract time zone offset)
     auto tp = std::chrono::system_clock::from_time_t(tt);
     
-    // 获取本地时间与 UTC 的时差
+    // Get time difference between local time and UTC
     std::time_t now = std::time(nullptr);
     std::tm local_tm = *std::localtime(&now);
     std::tm utc_tm = *std::gmtime(&now);
-    local_tm.tm_isdst = utc_tm.tm_isdst; // 统一夏令时设置
+    local_tm.tm_isdst = utc_tm.tm_isdst; // Unify DST setting
     std::time_t local_tt = std::mktime(&local_tm);
     std::time_t utc_tt = std::mktime(&utc_tm);
     auto timezone_diff = std::chrono::seconds(utc_tt - local_tt);
@@ -57,8 +57,8 @@ std::string Task::to_string() const {
         << start_airport << " -> " << end_airport << "  "
         << format_time(start_time) << " ~ " << format_time(end_time);
     if (task_type == "flight") {
-        oss << "  飞行:" << fly_time.count() << "min";
-        if (!aircraft_no.empty()) oss << "  机号:" << aircraft_no;
+        oss << "  Flight:" << fly_time.count() << "min";
+        if (!aircraft_no.empty()) oss << "  AircraftNo:" << aircraft_no;
     }
     return oss.str();
 }
@@ -68,12 +68,12 @@ std::string FDP::to_string() const {
     std::ostringstream oss;
     oss << "FDP: " << get_start_airport() << " -> " << get_end_airport() << "  "
         << format_time(get_start_time()) << " ~ " << format_time(get_end_time()) << "\n"
-        << "  总飞行时长: " << std::fixed << std::setprecision(1)
-        << std::chrono::duration<double, std::ratio<3600>>(get_flight_hours()).count() << "小时"
-        << "  Deadhead数: " << get_deadhead_count()
-        << "  日历天数: " << get_calendar_days()
+        << "  Total Flight Time: " << std::fixed << std::setprecision(1)
+        << std::chrono::duration<double, std::ratio<3600>>(get_flight_hours()).count() << " hours"
+        << "  Deadhead Count: " << get_deadhead_count()
+        << "  Calendar Days: " << get_calendar_days()
         << "  Score: " << get_score() << "\n"
-        << "  任务列表:\n";
+        << "  Task List:\n";
     for (const auto& task : tasks) {
         oss << "    " << task.to_string() << "\n";
     }
@@ -81,12 +81,12 @@ std::string FDP::to_string() const {
 }
 
 
-// --- SchedulingData 类的实现 ---
+// --- Implementation of SchedulingData class ---
 
 SchedulingData::SchedulingData(const std::filesystem::path& data_path, const std::filesystem::path& heuristic_path, size_t max_tasks_threshold) 
     : max_tasks_threshold_(max_tasks_threshold) {
-    std::cout << "开始加载数据..." << std::endl;
-    // 读取需要排除的任务
+    std::cout << "Starting to load data..." << std::endl;
+    // Read tasks to exclude
     _load_excluded_tasks(heuristic_path);
 
     _load_crews(data_path / "crew.csv");
@@ -98,8 +98,8 @@ SchedulingData::SchedulingData(const std::filesystem::path& data_path, const std
     _link_crew_qualifications(data_path / "crewLegMatch.csv");
 
 
-    std::cout << "数据加载完毕。共加载 " << crews_.size() << " 名机长, "
-              << flights_.size() << " 个航班, " << buses_.size() << " 趟大巴。" << std::endl;
+    std::cout << "Data loading complete. Loaded " << crews_.size() << " crews, "
+              << flights_.size() << " flights, " << buses_.size() << " buses." << std::endl;
 }
 
 void SchedulingData::_load_crews(const std::filesystem::path& file_path) {
@@ -108,7 +108,7 @@ void SchedulingData::_load_crews(const std::filesystem::path& file_path) {
     
     std::string crewId, base, stayStation;
     while(in.read_row(crewId, base, stayStation)){
-        // 使用 emplace 直接在 map 中构造对象，避免额外拷贝
+        // Use emplace to construct object directly in map, avoiding extra copy
         if(excluded_crew_ids_.find(crewId) != excluded_crew_ids_.end()) continue;
         crews_.emplace(crewId, Crew{crewId, base, stayStation});
     }
@@ -155,30 +155,30 @@ void SchedulingData::_load_buses(const std::filesystem::path& file_path) {
         }
     }
     
-    // 如果总任务数量超过阈值，随机删除多余的bus
+    // If total task count exceeds threshold, randomly delete excess buses
     // if (buses_.size() + flights_.size() > max_tasks_threshold_) {
-    //     std::cout << "Bus数量(" << buses_.size() << ") + 航班数量(" << flights_.size() 
-    //              << ")超过阈值" << max_tasks_threshold_ << "，随机删除多余的bus..." << std::endl;
+    //     std::cout << "Bus count (" << buses_.size() << ") + Flight count (" << flights_.size() 
+    //              << ") exceeds threshold " << max_tasks_threshold_ << ", randomly deleting excess buses..." << std::endl;
         
-    //     // 将所有bus ID放入vector中
+    //     // Put all bus IDs into vector
     //     std::vector<std::string> bus_ids;
     //     bus_ids.reserve(buses_.size());
     //     for (const auto& bus : buses_) {
     //         bus_ids.push_back(bus.first);
     //     }
         
-    //     // 随机打乱顺序
+    //     // Shuffle randomly
     //     std::random_device rd;
     //     std::mt19937 g(rd());
     //     std::shuffle(bus_ids.begin(), bus_ids.end(), g);
         
-    //     // 删除多余的bus
+    //     // Delete excess buses
     //     size_t to_remove = buses_.size() + flights_.size() - max_tasks_threshold_;
     //     for (size_t i = 0; i < to_remove; ++i) {
     //         buses_.erase(bus_ids[i]);
     //     }
         
-    //     std::cout << "已随机删除 " << to_remove << " 个bus，剩余 " << buses_.size() << " 个bus。" << std::endl;
+    //     std::cout << "Randomly deleted " << to_remove << " buses, remaining " << buses_.size() << " buses." << std::endl;
     // }
 }
 
@@ -198,7 +198,7 @@ void SchedulingData::_link_ground_duties(const std::filesystem::path& file_path)
     std::string id, crewId, airport, start_str, end_str;
     int isDuty_int;
 
-    // 创建一个临时的集合来记录有ground duty的机组
+    // Create a temporary set to record crews with ground duties
     std::unordered_set<std::string> crews_with_duties;
 
     while(in.read_row(id, crewId, airport, start_str, end_str, isDuty_int)) {
@@ -222,7 +222,7 @@ void SchedulingData::_link_crew_qualifications(const std::filesystem::path& file
     std::string crewId, legId;
     while(in.read_row(crewId, legId)) {
         if(file_path.string().find("0606") != std::string::npos){
-            crewId = crewId.substr(1, crewId.size() - 2); // 去掉引号
+            crewId = crewId.substr(1, crewId.size() - 2); // Remove quotes
             legId = legId.substr(1, legId.size() - 2); 
         }
         auto it = crews_.find(crewId);
@@ -231,7 +231,7 @@ void SchedulingData::_link_crew_qualifications(const std::filesystem::path& file
         }
     } 
 
-    // // 删除没有资质的机组
+    // // Delete crews with no qualifications
     // size_t removed_count = 0;
     // for (auto it = crews_.begin(); it != crews_.end();) {
     //     if (!it->second.qualified_flights.empty()) {
@@ -244,7 +244,7 @@ void SchedulingData::_link_crew_qualifications(const std::filesystem::path& file
 
     // for (auto it = crews_.begin(); it != crews_.end();) {
     //     if (it->second.qualified_flights.empty()) {
-    //         // 加入所有flights
+    //         // Add all flights
     //         for (const auto& flight : flights_) {
     //             it->second.qualified_flights.insert(flight.second.id);
     //         }
@@ -252,7 +252,7 @@ void SchedulingData::_link_crew_qualifications(const std::filesystem::path& file
     //     it++;
     // }
     
-    // std::cout << "删除了 " << removed_count << " 个无资质机组，剩余 " << crews_.size() << " 个机组。" << std::endl;
+    // std::cout << "Deleted " << removed_count << " unqualified crews, remaining " << crews_.size() << " crews." << std::endl;
 }
 
 void SchedulingData::_load_excluded_tasks(const std::filesystem::path& file_path) {
@@ -267,7 +267,7 @@ void SchedulingData::_load_excluded_tasks(const std::filesystem::path& file_path
     }
 }
 
-// --- 公共查询接口的实现 ---
+// --- Implementation of Public Query Interfaces ---
 
 const Flight* SchedulingData::get_flight(const std::string& flight_id) const {
     auto it = flights_.find(flight_id);
@@ -287,4 +287,3 @@ const Crew* SchedulingData::get_crew(const std::string& crew_id) const {
 const std::unordered_map<std::string, Crew>& SchedulingData::get_all_crews() const {
     return crews_;
 }
-

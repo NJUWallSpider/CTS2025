@@ -20,5 +20,5 @@ public:
 
 private:
     // ParallelManager parallel_manager_;
-    // ... 其他成员
+    // ... other members
 };

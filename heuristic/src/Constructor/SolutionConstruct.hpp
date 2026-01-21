@@ -37,10 +37,10 @@ public:
     // Generates a new, complete schedule.
     SolutionState generate_schedule();
     
-    // 破坏与重建优化
+    // Ruin and Recreate Optimization
     SolutionState ruin_and_recreate(SolutionState& initial_solution, double ruin_percentage = 0.1);
     
-    // 使用模拟退火的多路径破坏与重建优化
+    // Multi-path Ruin and Recreate Optimization using Simulated Annealing
     SolutionState simulated_annealing_ruin_recreate(
         SolutionState& initial_solution, 
         int num_paths = 5,
@@ -51,11 +51,11 @@ public:
         double initial_ruin_percentage = 0.05
     );
     
-    // 多线程版本的模拟退火多路径破坏与重建优化
+    // Multi-threaded version of Simulated Annealing Multi-path Ruin and Recreate Optimization
     SolutionState parallel_simulated_annealing_ruin_recreate(
         SolutionState& initial_solution, 
         int num_paths = 5,
-        int num_threads = 0,  // 0表示使用系统可用的线程数
+        int num_threads = 0,  // 0 means use the number of available system threads
         int max_iterations = 500,
         double initial_temperature = 100.0,
         double cooling_rate = 0.98,
@@ -71,19 +71,19 @@ private:
     double calculate_avg_flight_hours(const SolutionState& solution);
     int calculate_NFDP_count(const SolutionState& solution);
     
-    // 破坏阶段：移除部分机长的排班
+    // Ruin phase: remove schedules for some crews
     void ruin_solution(SolutionState& solution, const std::vector<std::string>& selected_crews);
     
-    // 重建阶段：为被选中的机长重新安排航班
+    // Recreate phase: reschedule flights for the selected crews
     void recreate_solution(SolutionState& solution, const std::vector<std::string>& selected_crews);
     
-    // 选择要破坏的机长
+    // Select crews to ruin
     std::vector<std::string> select_crews_to_ruin(const SolutionState& solution, double percentage);
     
-    // 计算接受新解的概率（模拟退火）
+    // Calculate acceptance probability for new solution (Simulated Annealing)
     double calculate_acceptance_probability(double delta_energy, double temperature);
     
-    // 多线程工作函数：处理一组路径
+    // Worker function for multi-threading: process a group of paths
     void thread_worker(
         std::vector<SolutionState>& paths,
         std::vector<double>& temperatures,
@@ -100,6 +100,6 @@ private:
         std::atomic<int>& global_iteration_counter
     );
     
-    // 随机数生成器
+    // Random number generator
     std::mt19937 rng_{std::random_device{}()};
 };

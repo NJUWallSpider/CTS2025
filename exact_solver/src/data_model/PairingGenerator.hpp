@@ -6,35 +6,35 @@
 
 class PairingGenerator {
 public:
-    // 接收 SchedulingData 对象的引用，避免拷贝
+    // Receive reference to SchedulingData object to avoid copying
     explicit PairingGenerator(SchedulingData& data, Date start_date, Date end_date);
 
-    // 主函数，构建所有合法的 FDP
+    // Main function, build all valid FDPs
     void build_all_valid_fdps();
     
-    // 单线程版本的构建函数，用于调试
+    // Single-threaded version of build function, for debugging
     void build_all_valid_fdps_single_thread();
 
 private:
-    // --- 内部方法 ---
+    // --- Internal Methods ---
     void _prepare_tasks();
 
-    // DFS核心函数，用于为单个(机场, 日期)组合生成FDPs
-    // 这个函数将由多线程并发调用
+    // DFS core function, generate FDPs for a single (airport, date) combination
+    // This function will be called concurrently by multiple threads
     std::vector<FDP> _process_airport_date(const std::string& airport, const Date& date);
 
-    // 递归的DFS构建器
+    // Recursive DFS builder
     void _dfs_fdp_builder(
         std::vector<Task>& current_path,
         std::unordered_set<std::string>& used_task_ids,
         std::vector<FDP>& found_fdps
     );
 
-    // --- 成员变量 ---
-    SchedulingData& data_; // 存储对原始数据的引用
+    // --- Member Variables ---
+    SchedulingData& data_; // Stores reference to original data
     std::unordered_map<std::string, std::vector<Task>> tasks_by_airport_;
 
-    // --- 算法常量 ---
+    // --- Algorithm Constants ---
     const std::chrono::hours MIN_CONNECTION_TIME_BUS; 
     const std::chrono::hours MIN_CONNECTION_TIME_FLIGHT;
     const int MAX_FLIGHT_TASKS_PER_FDP;

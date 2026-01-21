@@ -54,9 +54,9 @@ struct Cycle{
     TimePoint startTime;
     TimePoint endTime;
     std::vector<DutyPeriod> duty_periods;  // Changed from pointer to direct vector
-    // std::chrono::minutes cycle_task_time = std::chrono::minutes(0); // 周期内任务时间
-    // std::chrono::minutes cycle_duty_time = std::chrono::minutes(0); // 周期内duty时间
-    // std::chrono::minutes cycle_flight_time = std::chrono::minutes(0); // 周期内飞行时间
+    // std::chrono::minutes cycle_task_time = std::chrono::minutes(0); // Cycle task time
+    // std::chrono::minutes cycle_duty_time = std::chrono::minutes(0); // Cycle duty time
+    // std::chrono::minutes cycle_flight_time = std::chrono::minutes(0); // Cycle flight time
     // int cycle_task_count; 
 
     
@@ -80,7 +80,7 @@ public:
             std::map<std::string, std::vector<std::pair<std::string, bool>>>& flight_assignments,
             std::vector<Cycle>& cycles);
 
-    // 核心构造流程
+    // Core construction flow
     void assign_tasks_to_crew();
 
     // Main construction method

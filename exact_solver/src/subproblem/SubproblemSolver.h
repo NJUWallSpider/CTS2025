@@ -9,21 +9,21 @@
 #include <functional>
 #include <thread>
 
-// 前向声明
+// Forward declaration
 class MasterProblem;
 
-// 节点类型定义 - 表示(机场,时间点)组合
+// Node type definition - Represents (Airport, TimePoint) combination
 struct NetworkNode {
     std::string airport;
     time_point time;
     
-    // 用于比较和哈希
+    // For comparison and hashing
     bool operator==(const NetworkNode& other) const {
         return airport == other.airport && time == other.time;
     }
 };
 
-// 为NetworkNode定义哈希函数
+// Define hash function for NetworkNode
 struct NetworkNodeHash {
     std::size_t operator()(const NetworkNode& node) const {
         return std::hash<std::string>{}(node.airport) ^ 
@@ -31,171 +31,171 @@ struct NetworkNodeHash {
     }
 };
 
-// 边信息 - 存储连接两个节点的最优FDP
+// Edge Info - Stores the best FDP connecting two nodes
 struct EdgeInfo {
-    int best_fdp_idx = -1;  // 最优FDP在sorted_fdps中的索引
-    double reward = 0.0;    // 最优FDP的奖励值
+    int best_fdp_idx = -1;  // Index of optimal FDP in sorted_fdps
+    double reward = 0.0;    // Reward value of optimal FDP
     bool operator==(const EdgeInfo& other) const {
         return best_fdp_idx == other.best_fdp_idx && std::abs(reward - other.reward) < 1e-8;
     }
 };
 
-// FDP网络缓存结构
+// FDP Network Cache Structure
 class FDPNetwork {
 public:
     FDPNetwork() = default;
-    std::vector<FDP> sorted_fdps;           // 所有可用的FDP列表
-    std::vector<double> rewards;            // 每个FDP的奖励值
+    std::vector<FDP> sorted_fdps;           // List of all available FDPs
+    std::vector<double> rewards;            // Reward value for each FDP
     
-    // 节点集合
+    // Node collection
     std::vector<NetworkNode> nodes;
     
-    // 邻接表表示的有向图 - 从节点索引到(目标节点索引,边信息)的映射
+    // Adjacency list representation of directed graph - Mapping from node index to (target node index, edge info)
     std::vector<std::vector<std::pair<size_t, EdgeInfo>>> graph;
     
-    // 源点和汇点索引
+    // Source and Sink indices
     size_t source;
     size_t sink;
     
-    // 从FDP索引到对应边的映射(用于快速更新)
+    // Mapping from FDP index to corresponding edge (for fast updates)
     std::unordered_map<int, std::pair<size_t, size_t>> fdp_to_edge;
 
-    // 从节点索引到FDP索引的映射
+    // Mapping from node index to FDP index
     std::unordered_map<NetworkNode, std::vector<int>, NetworkNodeHash> node_to_fdp_start;
     std::unordered_map<NetworkNode, std::vector<int>, NetworkNodeHash> node_to_fdp_end;
 };
 
 class SubproblemSolver {
 public:
-    // 构造函数，接收数据和主问题引用
+    // Constructor, receives data and reference to master problem
     SubproblemSolver(const SchedulingData& data, const MasterProblem& master, std::string fdp_path, 
                     double non_base_rejection_prob = 0.0, int beam_width = 20);
     
-    // 更新对偶值
+    // Update dual values
     void updateDuals();
     
-    // 清除所有缓存数据
+    // Clear all cache data
     void clearCache();
     
-    // 只清除与特定机组相关的缓存
+    // Clear only crew-specific cache
     void clearCrewSpecificCache();
 
-    // 为特定机长求解子问题
+    // Solve subproblem for a specific crew
     bool solveForCrew(const std::string& crew_id);
     bool solveForCrewWithDuals(const std::string& crew_id, 
                                const std::unordered_map<std::string, double>& flight_duals);
     
-    // 获取最优FDP
+    // Get optimal FDP
     const FDP& getBestFDP() const;
     
-    // 获取最优解的检验数
+    // Get reduced cost of optimal solution
     double getReducedCost() const;
     
-    // 预处理所有机组的FDP网络并保存
+    // Precompute FDP networks for all crews and save
     void precomputeAllFDPNetworks();
 
     void precomputeAllFDPNetworksParallel(int num_threads = std::thread::hardware_concurrency());
     
-    // 测试FDP网络的序列化与反序列化
+    // Test serialization and deserialization of FDP network
     bool testSerialization(const std::string& crew_id, FDPNetwork& original_network);
     
 private:
 
-    // 使用std::chrono定义时间点类型
+    // Use std::chrono to define time point type
     using time_point = std::chrono::system_clock::time_point;
     
 
-    // 筛选机长可执行的合法FDP
+    // Filter valid FDPs executable by crew
     std::vector<FDP> filterValidFDPs(const std::string& crew_id);
     
-    // 计算FDP的奖励值
+    // Calculate reward value for FDP
     double calculateFDPReward(const FDP& fdp, const std::unordered_map<std::string, double>& flight_duals) const;
     
-    // 构建并求解最长路问题
+    // Construct and solve longest path problem
     std::vector<FDP> solveLongestPath(const std::string& crew_id, 
                                      const std::vector<FDP>& valid_fdps,
                                      double crew_dual);
     
-    // 辅助函数：按起始机场对FDP进行分组
+    // Helper function: Group FDPs by start airport
     std::unordered_map<std::string, std::vector<std::pair<size_t, const FDP*>>>
     groupFDPsByStartAirport(const std::vector<FDP>& fdps) const;
     
-    // 构建FDP网络
+    // Build FDP Network
     FDPNetwork buildFDPNetwork(const std::string& crew_id, const std::vector<FDP>& valid_fdps);
     
-    // 更新网络奖励值
+    // Update network reward values
     void updateNetworkRewards(FDPNetwork& network);
     
-    // 求解网络最长路
+    // Solve longest path on network
     std::vector<FDP> solveLongestPathWithNetwork(const FDPNetwork& network, double crew_dual, std::string crew_id);
     
-    // 获取FDP包含的航班ID（使用缓存）
+    // Get flight IDs contained in FDP (using cache)
     std::unordered_set<std::string> getCachedFlightIds(const FDP& fdp) const;
     
-    // 文件操作：获取网络文件路径
+    // File operation: Get network file path
     std::string getNetworkFilePath(const std::string& crew_id) const;
     
-    // 序列化FDP网络到文件
+    // Serialize FDP network to file
     bool serializeFDPNetwork(const std::string& crew_id, const FDPNetwork& network, 
                               const std::string& filename) const;
     
-    // 从文件反序列化FDP网络
+    // Deserialize FDP network from file
     bool deserializeFDPNetwork(const std::string& crew_id, const std::string& filename, 
                                 FDPNetwork& network);
     
-    // 序列化单个FDP
+    // Serialize single FDP
     std::string serializeFDP(const FDP& fdp) const;
     
-    // 反序列化单个FDP
+    // Deserialize single FDP
     FDP deserializeFDP(const std::string& str) const;
     
-    // 比较两个Task是否相同（用于测试）
+    // Compare if two Tasks are identical (for testing)
     bool compareTasks(const Task& t1, const Task& t2) const;
     
-    // 比较两个FDP是否相同（用于测试）
+    // Compare if two FDPs are identical (for testing)
     bool compareFDPs(const FDP& f1, const FDP& f2) const;
     
-    // 比较两个FDP网络是否相同（用于测试）
+    // Compare if two FDP networks are identical (for testing)
     bool compareNetworks(const FDPNetwork& n1, const FDPNetwork& n2) const;
     
 private:
-    // 引用项目数据
+    // Reference to project data
     const SchedulingData& data_;
     
-    // 引用主问题
+    // Reference to master problem
     const MasterProblem& master_;
     
-    // 缓存各航班的对偶价值
+    // Cache dual values for each flight
     std::unordered_map<std::string, double> flight_duals_cache_;
     
-    // 缓存各机长可执行的合法FDP
+    // Cache valid FDPs executable by each crew
     std::unordered_map<std::string, std::vector<FDP>> crew_valid_fdps_cache_;
     
-    // 缓存FDP包含的航班ID
+    // Cache flight IDs contained in FDP
     mutable std::unordered_map<std::string, std::unordered_set<std::string>> fdp_flight_ids_cache_;
     
-    // 哈希函数用于FDP指针对
+    // Hash function for FDP pointer pair
     struct PairFDPPtrHash {
         std::size_t operator()(const std::pair<const FDP*, const FDP*>& p) const {
             return std::hash<const FDP*>{}(p.first) ^ std::hash<const FDP*>{}(p.second);
         }
     };
     
-    // 缓存FDP的连接性检查结果
+    // Cache FDP connectivity check results
     mutable std::unordered_map<std::pair<const FDP*, const FDP*>, bool, PairFDPPtrHash> connectivity_cache_;
     
-    // 最优的FDP
+    // Optimal FDP
     FDP best_fdp_;
     
-    // 最优解的检验数
+    // Reduced cost of optimal solution
     double reduced_cost_;
     
-    // FDP网络文件存储目录
+    // FDP network file storage directory
     std::string network_directory_;
     
-    // 非基地机场结束的FDP被拒绝的概率
+    // Probability of rejecting FDP ending at non-base airport
     double non_base_rejection_prob_;
     
-    // Beam搜索的宽度
+    // Beam search width
     int beam_width_;
 };

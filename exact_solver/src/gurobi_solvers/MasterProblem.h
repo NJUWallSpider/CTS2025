@@ -9,15 +9,15 @@
 #include <memory>
 #include <deque>
 
-// 列的状态信息
+// Column Status Information
 struct ColumnInfo {
-    int index;                          // 在pairing_vars_中的索引
-    std::string crew_id;                // 机长ID
-    FDP fdp;                           // 飞行值勤期
-    int zero_value_count;              // 连续解值为0的次数
-    int age;                           // 年龄（迭代次数）
-    double last_reduced_cost;          // 最近一次的检验数
-    bool is_active;                    // 是否在活跃集中
+    int index;                          // Index in pairing_vars_
+    std::string crew_id;                // Crew ID
+    FDP fdp;                           // Flight Duty Period
+    int zero_value_count;              // Number of consecutive zero values
+    int age;                           // Age (number of iterations)
+    double last_reduced_cost;          // Last reduced cost
+    bool is_active;                    // Is in active set
 
     ColumnInfo(int idx, const std::string& cid, const FDP& f) 
         : index(idx), crew_id(cid), fdp(f), zero_value_count(0), age(0), 
@@ -29,106 +29,106 @@ public:
     MasterProblem(const SchedulingData& data, std::string data_version);
     ~MasterProblem();
 
-    // 初始化主问题模型
+    // Initialize Master Problem Model
     void initialize();
     
-    // 求解当前主问题
+    // Solve current Master Problem
     void solve();
     
-    // 求解整数规划
+    // Solve Integer Program
     void solveIntegerProgram();
     
-    // 获取航班的对偶价值
+    // Get Flight Dual Value
     double getFlightDual(const std::string& flight_id) const;
     
-    // 获取机长的对偶价值
+    // Get Crew Dual Value
     double getCrewDual(const std::string& crew_id) const;
     
-    // 添加新的列(飞行周期)到主问题
+    // Add new column (Flight Pairing) to Master Problem
     int addColumn(const std::string& crew_id, const FDP& fdp);
     
-    // 检查列是否已存在
+    // Check if column already exists
     bool columnExists(const std::string& crew_id, const FDP& fdp) const;
     
-    // 获取当前解的目标值(覆盖的航班数)
+    // Get objective value of current solution (number of covered flights)
     double getObjectiveValue() const;
     
-    // 检查算法是否收敛
+    // Check if algorithm converged
     bool isConverged() const;
     
-    // 输出最终解决方案
+    // Print final solution
     void printSolution() const;
 
 private:
     std::string data_version_;
-    // 引用外部数据
+    // Reference to external data
     const SchedulingData& data_;
     
-    // Gurobi环境和模型
+    // Gurobi environment and model
     GRBEnv env_;
     std::unique_ptr<GRBModel> model_;
     
-    // 航班覆盖变量 y_i
+    // Flight coverage variables y_i
     std::unordered_map<std::string, GRBVar> flight_vars_;
     
-    // 飞行周期分配变量 x_jk
+    // Flight pairing assignment variables x_jk
     std::vector<GRBVar> pairing_vars_;
     
-    // 记录每个变量对应的机长和FDP
+    // Record Crew and FDP for each variable
     std::vector<std::pair<std::string, FDP>> pairing_info_;
     
-    // 记录每个航班被哪些变量覆盖
+    // Record which variables cover each flight
     std::unordered_map<std::string, std::vector<int>> flight_coverage_;
     
-    // 记录每个机长被哪些变量使用
+    // Record which variables use each crew
     std::unordered_map<std::string, std::vector<int>> crew_usage_;
     
-    // 记录对偶值
+    // Record dual values
     std::unordered_map<std::string, double> flight_duals_;
     std::unordered_map<std::string, double> crew_duals_;
     
-    // 存储约束对象，用于直接访问而非通过名称查找
+    // Store constraint objects for direct access instead of name lookup
     std::unordered_map<std::string, GRBConstr> flight_constrs_;
     std::unordered_map<std::string, GRBConstr> crew_constrs_;
     
-    // 已添加列的哈希集合，用于检查重复
+    // Hash set of added columns to check for duplicates
     std::unordered_set<std::string> added_columns_;
     
-    // 辅助函数，用于从FDP中提取覆盖的航班
+    // Helper function to extract covered flights from FDP
     std::vector<std::string> getFlightsFromFDP(const FDP& fdp) const;
     
-    // 辅助函数，为FDP生成唯一标识符
+    // Helper function to generate unique identifier for FDP
     std::string generateColumnHash(const std::string& crew_id, const FDP& fdp) const;
     
-    // 迭代计数和收敛标志
+    // Iteration counter and convergence flag
     int iteration_count_;
     bool converged_;
 
-    // 列管理相关的参数
-    static constexpr int MAX_ZERO_VALUE_COUNT = 10;   // 连续解值为0的最大次数
-    static constexpr int MAX_AGE = 50;               // 最大年龄
-    static constexpr double REDUCED_COST_THRESHOLD = -10.0; // 检验数阈值
-    static constexpr int REACTIVATION_INTERVAL = 5;   // 重激活检查间隔
-    static constexpr int MAX_ACTIVE_COLUMNS = 2500;   // 活跃列的最大数量
+    // Column management parameters
+    static constexpr int MAX_ZERO_VALUE_COUNT = 10;   // Max consecutive zero value count
+    static constexpr int MAX_AGE = 50;               // Max age
+    static constexpr double REDUCED_COST_THRESHOLD = -10.0; // Reduced cost threshold
+    static constexpr int REACTIVATION_INTERVAL = 5;   // Reactivation check interval
+    static constexpr int MAX_ACTIVE_COLUMNS = 2500;   // Max number of active columns
 
-    // 列管理相关的数据结构
-    std::vector<ColumnInfo> columns_;                // 所有列的信息
-    std::deque<int> column_pool_;                   // 列池（存储非活跃列的索引）
+    // Column management data structures
+    std::vector<ColumnInfo> columns_;                // Info of all columns
+    std::deque<int> column_pool_;                   // Column pool (stores indices of inactive columns)
 
-    // 列管理相关的方法
-    void manageColumns();                           // 列管理的主要逻辑
-    void updateColumnStatus();                      // 更新列的状态信息
-    void deactivateColumns();                       // 将不活跃的列移入列池
-    void reactivateColumns();                       // 从列池中重激活有潜力的列
-    double calculateReducedCost(const ColumnInfo& col) const;  // 计算列的检验数
+    // Column management methods
+    void manageColumns();                           // Main logic for column management
+    void updateColumnStatus();                      // Update column status info
+    void deactivateColumns();                       // Move inactive columns to pool
+    void reactivateColumns();                       // Reactivate promising columns from pool
+    double calculateReducedCost(const ColumnInfo& col) const;  // Calculate reduced cost for column
 
-    // 新增：将变量转换为整数变量
+    // New: Convert variables to integer variables
     void convertToIntegerProgram();
 
-    // 新增：导出MPS文件
+    // New: Export MPS file
     void exportMPSFile() const;
-    // 新增：尝试从MPS文件读取模型
+    // New: Try to load model from MPS file
     bool tryLoadFromMPSFile();
-    // 新增：获取MPS文件路径
+    // New: Get MPS file path
     std::string getMPSFilePath() const;
 };

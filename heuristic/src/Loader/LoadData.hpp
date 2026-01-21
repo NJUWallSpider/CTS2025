@@ -11,20 +11,20 @@
 
 using TimePoint = std::chrono::system_clock::time_point;
 
-// // 代表一个可被调度的任务段 (航班或巴士)
+// // Represents a schedulable task segment (Flight or Bus)
 // struct Leg {
-//     int rnum = -1;            // 排序后的全局唯一索引 (rank number)
-//     bool is_flight = false;           // true代表航班, false代表巴士 
-//     bool is_ground_duty = false;      // true代表地面任务
-//     bool is_grd_rest = false;         // true代表地面任务休息
-//     std::string id;           // 原始ID (e.g., "Flt_100002" or "ddh_100001")
+//     int rnum = -1;            // Globally unique index after sorting (rank number)
+//     bool is_flight = false;           // true for flight, false for bus 
+//     bool is_ground_duty = false;      // true for ground duty
+//     bool is_grd_rest = false;         // true for ground duty rest
+//     std::string id;           // Original ID (e.g., "Flt_100002" or "ddh_100001")
 //     std::string dep_airport;
 //     std::string arr_airport;
 //     TimePoint dep_time;
 //     TimePoint arr_time;
-//     std::string aircraftNo; // 飞机尾号
-//     int flyTime_mins;       // 飞行时间（分钟）
-//     std::string crewId = "";     // 机组成员ID
+//     std::string aircraftNo; // Aircraft tail number
+//     int flyTime_mins;       // Flight time (minutes)
+//     std::string crewId = "";     // Crew member ID
 // };
 
 struct Flight{
@@ -50,7 +50,7 @@ struct Bus{
     TimePoint ta;
 };
 
-// 代表一个预先分配的地面勤务
+// Represents a pre-assigned ground duty
 struct GroundDuty {
     std::string crew_id;
     std::string id;
@@ -60,22 +60,22 @@ struct GroundDuty {
     int is_duty;
 };
 
-// 代表一个机组成员及其当前状态
+// Represents a crew member and their current state
 struct Crew {
-    std::string id;                   // 机组成员ID
-    std::string base;                 // 机组成员的基地机场
-    std::string initialStayStation;   // 初始停留机场
+    std::string id;                   // Crew member ID
+    std::string base;                 // Crew member base airport
+    std::string initialStayStation;   // Initial stay station
 
-    // 预先分配的地面占位
+    // Pre-assigned ground duties
     std::vector<GroundDuty> groundDuties;
 
-    // 机组成员的资格列表
+    // Crew member qualifications list
     std::unordered_set<std::string> qualifications;
 
-    // // 执飞(fly)和置位(deadhead)的航班rnum列表 
+    // // Flight (fly) and positioning (deadhead) flight rnum list 
     // std::vector<int> fd_list; 
 
-    // // 仅作为乘客搭乘(deadhead)的巴士rnum列表 
+    // // Bus rnum list for passenger (deadhead) only 
     // std::vector<int> h_list;
 
     // flight(non-deadhead) list
@@ -87,13 +87,13 @@ struct Crew {
     // bus(deadhead) list
     std::vector<Bus> ddh_bus_list;
 
-    // 成员当前任务的出发时间 
+    // Member current task departure time 
     TimePoint current_dp;
 
-    // 成员当前任务的到达时间 
+    // Member current task arrival time 
     TimePoint current_ar;
 
-    // 成员执飞/搭乘任务经过的机场列表，第一个机场是其基地 
+    // List of airports visited by member for flight/passenger tasks, first airport is their base 
     std::vector<std::string> visited_airports;
 
 };
@@ -112,7 +112,7 @@ class DataLoader {
 public:
     explicit DataLoader(const std::filesystem::path& data_path, const std::string& data_version);
 
-    // --- 公共访问接口 ---
+    // --- Public Access Interface ---
     const std::map<std::string, Crew>& getCrews() const { return crews_; }
     // const std::vector<Leg>& getSchedulableLegs() const { return schedulable_legs_; }
     // const Leg& getLegByRnum(int rnum) const { return schedulable_legs_[rnum]; }
@@ -125,9 +125,9 @@ public:
     std::string getDataVersion() const { return data_version_; }
     const std::map<std::string, std::vector<Flight>>& getAircraftToFlights() const { return aircraft_to_flights_; }
 private:
-    // --- 成员变量 ---
+    // --- Member Variables ---
     std::map<std::string, Crew> crews_;
-    // std::vector<Leg> schedulable_legs_; // 已排序并分配好rnum
+    // std::vector<Leg> schedulable_legs_; // Sorted and assigned rnum
     std::map<std::string, std::vector<std::string>> flight_to_crews_;
     std::vector<Flight> flights_;
     std::vector<Bus> buses_;
@@ -138,7 +138,7 @@ private:
     std::map<std::pair<std::string, std::string>, std::vector<int>> route_to_legs_index_;
 
 
-    // --- 私有加载函数 ---
+    // --- Private Load Functions ---
     void _load_crews(const std::filesystem::path& file_path);
     void _load_flights(const std::filesystem::path& flight_path);
     void _load_buses(const std::filesystem::path& bus_path);
@@ -150,7 +150,7 @@ private:
 };
 
 
-// // 用于打包所有输入数据
+// // Used to package all input data
 // struct ProcessedData {
 //     std::vector<Leg> legs;
 //     std::vector<Crew> crews;

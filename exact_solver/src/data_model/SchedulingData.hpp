@@ -1,5 +1,5 @@
 // SchedulingData.hpp
-#pragma once // 防止头文件被重复包含
+#pragma once // Prevent duplicate inclusion
 
 #include <iostream>
 #include <string>
@@ -11,12 +11,12 @@
 #include <filesystem>
 #include <optional>
 
-// 使用别名简化代码
+// Use aliases to simplify code
 using time_point = std::chrono::system_clock::time_point;
-// C++20的日期表示，比time_point更适合表示年月日
+// C++20 date representation, better than time_point for year-month-day
 using Date = std::chrono::year_month_day; 
 
-// --- C++ 等价的数据结构 ---
+// --- C++ Equivalent Data Structures ---
 
 struct Flight {
     std::string id;
@@ -26,7 +26,7 @@ struct Flight {
     time_point sta;
     std::string fleet;
     std::string aircraft_no;
-    int fly_time; // 分钟
+    int fly_time; // Minutes
 };
 
 struct Bus {
@@ -54,9 +54,9 @@ struct Crew {
 };
 
 
-// 任务的统一表示 (等同于 Python 中的 Task)
-// 在C++中，我们可以通过函数或方法直接从Flight/Bus获取，而不一定需要新结构
-// 但为了保持1:1的结构，我们先定义出来
+// Unified representation of Task (Equivalent to Task in Python)
+// In C++, we can get properties directly from Flight/Bus via functions or methods, without necessarily needing a new struct
+// But to maintain 1:1 structure, we define it first
 class Task {
 public:
     std::string id;
@@ -68,8 +68,8 @@ public:
     std::chrono::minutes fly_time{0};
     std::string aircraft_no;
 
-    // C++中，为了可哈希性，我们需要自定义哈希函数和等于操作符
-    // 或者，由于其成员复杂，通常不直接作为unordered_map的键
+    // In C++, for hashability, we need custom hash function and equality operator
+    // Or, due to complex members, typically not used directly as unordered_map key
     bool operator==(const Task& other) const {
         return id == other.id;
     }
@@ -77,7 +77,7 @@ public:
     std::string to_string() const;
 };
 
-// FDP 的 C++ 表示
+// C++ representation of FDP
 class FDP {
 public:
     int id;
@@ -99,7 +99,7 @@ public:
 
     std::string to_string() const;
     
-    // 使用 std::accumulate 计算总和，非常高效
+    // Use std::accumulate to calculate sum, very efficient
     std::chrono::minutes get_flight_hours() const {
         std::chrono::minutes total_duration(0);
         for (const auto& task : tasks) {
@@ -134,7 +134,7 @@ public:
         if (tasks.empty()) return 0;
         Date start_date = std::chrono::floor<std::chrono::days>(get_start_time());
         Date end_date = std::chrono::floor<std::chrono::days>(get_end_time());
-        // year_month_day 之间的减法直接得到天数
+        // Subtraction between year_month_day directly gives days
         return (std::chrono::sys_days(end_date) - std::chrono::sys_days(start_date)).count() + 1;
     }
 
@@ -144,7 +144,7 @@ public:
         return flight_hours * W_fly - get_deadhead_count() * W_deadhead - get_calendar_days() * W_days;
     }
     
-    // 为了可哈希，同样需要自定义
+    // For hashability, also need customization
     bool operator==(const FDP& other) const;
 };
 
@@ -208,57 +208,57 @@ struct Tour {
     }
 };
 
-// --- 为 std::pair<std::string, Date> 定义哈希函数 (正确且健壮的版本) ---
+// --- Define hash function for std::pair<std::string, Date> (Correct and robust version) ---
 struct PairHash {
     std::size_t operator()(const std::pair<std::string, Date>& p) const {
-        // 1. 计算字符串的哈希值
+        // 1. Calculate hash of string
         const auto h1 = std::hash<std::string>{}(p.first);
 
-        // 2. 将 year_month_day 转换为 "从epoch开始的天数"
-        // 这会为每个唯一的日期生成一个唯一的整数值
+        // 2. Convert year_month_day to "days since epoch"
+        // This generates a unique integer value for each unique date
         const auto days_since_epoch = std::chrono::sys_days(p.second).time_since_epoch().count();
         
-        // 3. 对这个代表日期的唯一整数进行哈希
+        // 3. Hash this unique integer representing the date
         const auto h2 = std::hash<long long>{}(days_since_epoch);
 
-        // 4. 组合两个哈希值。这是一种比简单异或更健壮的组合方式。
-        // (灵感来自 boost::hash_combine)
+        // 4. Combine two hash values. This is a more robust way than simple XOR.
+        // (Inspired by boost::hash_combine)
         return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
     }
 };
 
 time_point string_to_time_point(const std::string& time_str);
 
-// --- 数据加载和存储的主类 ---
+// --- Main class for data loading and storage ---
 class SchedulingData {
 public:
-    // 构造函数，接收数据路径并加载所有数据
+    // Constructor, receives data path and loads all data
     explicit SchedulingData(const std::filesystem::path& data_path, const std::filesystem::path& heuristic_path, size_t max_tasks_threshold = 3500);
 
-    // --- 公共查询接口 ---
+    // --- Public query interface ---
     const Flight* get_flight(const std::string& flight_id) const;
     const Bus* get_bus(const std::string& bus_id) const;
     const Crew* get_crew(const std::string& crew_id) const;
 
-    // 提供对所有航班和巴士数据的只读访问
+    // Provide read-only access to all flight and bus data
     const std::unordered_map<std::string, Flight>& get_all_flights() const { return flights_; }
     const std::unordered_map<std::string, Bus>& get_all_buses() const { return buses_; }
     
-    // 为了方便，可以提供一个获取所有机组的引用
+    // For convenience, provide a reference to all crews
     const std::unordered_map<std::string, Crew>& get_all_crews() const;
 
-    // 所有合法的FDP
+    // All valid FDPs
     std::unordered_map<
         std::pair<std::string, Date>, 
         std::vector<FDP>, 
         PairHash
     > all_valid_fdps_;
 
-    // 获取所有的layover站点
+    // Get all layover stations
     const std::unordered_set<std::string>& get_layover_stations() const { return layover_stations_; }
 
 private:
-    // 数据加载方法
+    // Data loading methods
     void _load_crews(const std::filesystem::path& file_path);
     void _load_flights(const std::filesystem::path& file_path);
     void _load_buses(const std::filesystem::path& file_path);
@@ -270,10 +270,10 @@ private:
     std::unordered_map<std::string, Flight> flights_;
     std::unordered_map<std::string, Bus> buses_;
     std::unordered_map<std::string, Crew> crews_;
-    std::unordered_set<std::string> excluded_task_ids_; // 存储需要排除的任务ID
-    std::unordered_set<std::string> excluded_crew_ids_; // 存储需要排除的机组ID
+    std::unordered_set<std::string> excluded_task_ids_; // Stores task IDs to exclude
+    std::unordered_set<std::string> excluded_crew_ids_; // Stores crew IDs to exclude
     std::unordered_set<std::string> layover_stations_;
     
-    // 任务数量阈值，超过此阈值将随机删除bus
+    // Task count threshold, randomly delete buses if exceeded
     size_t max_tasks_threshold_;
 };
